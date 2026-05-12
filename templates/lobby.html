@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>遊戲大廳 - 選擇對手</title>
+    <style>
+        body { background-color: #0a1f12; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .lobby-card { background: rgba(255, 255, 255, 0.1); padding: 40px; border-radius: 20px; text-align: center; border: 1px solid #d4af37; width: 400px; }
+        h2 { color: #d4af37; }
+        .option-group { margin: 30px 0; }
+        select { padding: 10px; width: 80%; border-radius: 5px; font-size: 16px; background: #222; color: white; border: 1px solid #444; }
+        .btn-start { background: #d4af37; color: black; border: none; padding: 15px 30px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 18px; }
+        .btn-start:hover { background: #f1c40f; }
+    </style>
+</head>
+<body>
+    <img src="{{ url_for('static', filename='images/wesley_logo.png') }}" 
+     style="position: absolute; top: 20px; left: 20px; width: 100px; height: auto;">
+     
+    <div class="lobby-card">
+        <img src="{{ url_for('static', filename='images/wesley college logo (1).png') }}" style="width: 100px; height: auto;">
+        <h2>🃏 準備開局</h2>
+        <p>請選擇電腦對手 (AI) 的數量：</p>
+        
+        <form action="/start_game" method="POST">
+            <div class="option-group">
+                <select name="ai_count">
+                    <option value="1">1 名電腦玩家</option>
+                    <option value="2">2 名電腦玩家</option>
+                    <option value="3">3 名電腦玩家</option>
+                </select>
+            </div>
+            <button type="submit" class="btn-start">開始遊戲</button>
+        </form>
+        <!-- 在 </form> 標籤後加入這段 -->
+        <div style="margin-top: 25px; border-top: 1px solid rgba(212, 175, 55, 0.3); padding-top: 15px;">
+            <a href="/logout" style="color: #888; text-decoration: none; font-size: 14px; display: inline-block;">
+                🚪 登出帳號並返回首頁
+            </a>
+        </div>
+    </div>
+</body>
+</html>

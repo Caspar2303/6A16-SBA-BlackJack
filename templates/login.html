@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>衞理中學ICT BlackJack - LogIn</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle, #0a4d1a 0%, #052c0f 100%);
+            font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.98);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+            width: 350px;
+            text-align: center;
+            border-top: 5px solid #d4af47;
+        }
+
+        h2 {
+            color: #0a4d1a;
+            margin-bottom: 30px;
+            font-size: 26px;
+            letter-spacing: 2px;
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #444;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            box-sizing: border-box;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        input:focus {
+            border-color: #d4af37;
+            outline: none;
+            box-shadow: 0 0 8px rgba(212, 175, 55, 0.2);
+        }
+
+        /* 4. 登入按鈕 */
+        .btn-submit {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #c0392b 0%, #96281b 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(192, 57, 43, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        /* 這是你漏掉的：註冊按鈕的外觀 */
+        .btn-register {
+            width: 100%;
+            padding: 14px;
+            background: transparent;      /* 背景透明 */
+            color: #d4af37;              /* 金色文字 */
+            border: 2px solid #d4af37;   /* 金色邊框 */
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;            /* 與登入按鈕拉開距離 */
+            transition: all 0.3s;        /* 讓滑鼠移上去的變化更順滑 */
+        }
+
+        /* 當滑鼠移到註冊按鈕上時的效果 */
+        .btn-register:hover {
+            background: rgba(212, 175, 55, 0.1); /* 淡淡的金光 */
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+        }
+        
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(192, 57, 43, 0.6);
+        }
+
+        .btn-submit:active {
+            transform: translateY(1px);
+        }
+
+        .footer-text {
+            margin-top: 20px;
+            color: #888;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 1. 將 Logo 放在這裡（body 的最上方） -->
+    <img src="{{ url_for('static', filename='images/wesley_logo.png') }}" 
+         style="position: absolute; top: 20px; left: 20px; width: 100px; height: auto;">
+
+    <div class="login-card">
+        <h2>🃏 衞理中學ICT SBA BlackJack</h2>
+        
+        <form action="/login" method="POST">
+    <div class="input-group">
+        <label for="username">玩家帳號</label>
+        <input type="text" id="username" name="username" placeholder="請輸入您的暱稱" required>
+    </div>
+    
+    <div class="input-group">
+        <label for="password">登入密碼</label>
+        <input type="password" id="password" name="password" placeholder="請輸入密碼" required>
+    </div>
+
+    <!-- 主按鈕：登入 -->
+    <button type="submit" class="btn-submit">即刻開局</button>
+
+    <!-- 這裡的意思是：當點擊時，將瀏覽器窗口的地址改為 /register -->
+    <button type="button" class="btn-register" onclick="window.location.href='/register'">申請入會</button>
+        </form>
+
+        <div class="footer-text">
+            未成年請勿參與博弈遊戲
+        </div>
+
+        <div class="footer-text">
+            *Just For School SBA
+            沒有任何賭博成份*
+        </div>
+    </div>
+
+</head>
+</html>
