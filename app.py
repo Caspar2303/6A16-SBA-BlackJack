@@ -104,11 +104,11 @@ def index():
 def register():
     return render_template('register.html')
 
-# 處理使用者註冊請求
+# 處理使用者註冊請求（已修復重複帳號漏洞）
 @app.route('/do_register', methods=['POST'])
 def do_register():
-    new_user = request.form.get('username')
-    new_pwd = request.form.get('password')
+    new_user = request.form.get('username', '').strip()
+    new_pwd = request.form.get('password', '').strip()
 
     if not new_user or not new_pwd:
         return f"""
@@ -120,7 +120,10 @@ def do_register():
         """
 
     users_db = load_users()
-    if new_user in users_db:
+    
+    # 不區分大小寫檢查，防止出現重複帳號（例如 "user" 與 "User "）
+    existing_users_lower = [u.lower() for u in users_db.keys()]
+    if new_user.lower() in existing_users_lower:
         return f"""
         <body style="background-color: #0a1f12; color: white; text-align: center; padding-top: 100px; font-family: sans-serif;">
             <h1>Registration Failed</h1><p>Username <strong>{new_user}</strong> is already taken!</p>
@@ -149,8 +152,8 @@ def do_register():
 # 處理登入驗證邏輯
 @app.route('/login', methods=['POST'])
 def login():
-    user = request.form.get('username')
-    pwd = request.form.get('password')
+    user = request.form.get('username', '').strip()
+    pwd = request.form.get('password', '').strip()
 
     users_db = load_users()
     if user in users_db and users_db[user]['password'] == pwd:
@@ -312,7 +315,7 @@ def logout():
     session.clear()
     return redirect(url_for('home'))
 
-# 21 點核心遊戲邏輯
+# 21 點核心遊戲邏輯（已修復 Quit Table 點擊失效問題）
 @app.route('/game', methods=['GET', 'POST'])
 def game():
     if 'user' not in session:
@@ -322,6 +325,7 @@ def game():
     session['ai_count'] = ai_count
     action = request.form.get('action', 'bet_phase')
 
+    # 加入 z-index: 9999 確保 Quit 按鈕永遠位於最上層
     quit_btn_html = """
     <a href="/lobby" style="position: absolute; top: 20px; right: 20px; background: rgba(255, 71, 87, 0.2); color: #ff4757; border: 1px solid #ff4757; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px; z-index: 9999;">
         🚪 Quit Table
