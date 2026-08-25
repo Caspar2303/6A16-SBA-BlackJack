@@ -359,7 +359,7 @@ def game():
                     <input type="hidden" name="action" value="start_round">
                     <div style="margin: 20px 0;">
                         <label style="font-size: 18px;">Enter Bet Amount ($):</label><br>
-                        <input type="number" name="bet" value="100" min="1" max="{session['bank']}" class="bet-input" required oninvalid="this.setCustomValidity('Value must be greater than or equal to 1.')" oninput="this.setCustomValidity('')">
+                        <input type="number" name="bet" value="100" min="1" max="{session['bank']}" class="bet-input" required oninvalid="this.setCustomValidity(this.validity.rangeUnderflow ? 'Value must be greater than or equal to 1.' : 'Value must be less than or equal to ' + this.max + '.')" oninput="this.setCustomValidity('')">
                     </div>
                     <button type="submit" class="btn-deal">🃏 Deal</button>
                 </form>
