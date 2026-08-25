@@ -1,111 +1,568 @@
-# 【關鍵步奏 1】導入 Flask 的核心組件
-# 你需要從 flask 庫中「拿」出 Flask、render_template 和 request
-from flask import Flask, render_template, request, redirect, url_for
+import os
+import json
+import random
+from flask import Flask, render_template, request, redirect, url_for, session
 
-# 【關鍵步奏 2】初始化你的 App
-# 這行代碼定義了什麼是 "app"，這就是為什麼之前會報錯說 "app" 未定義
 app = Flask(__name__)
+# 設定 Session 加密金鑰
+app.secret_key = 'black_jack_secret_key_wesley'
 
-# 首頁路由：顯示登入頁面
+# ---------------------------------------------------------
+# SBA 學術免責聲明組件（顯示於每個頁面底部）
+# ---------------------------------------------------------
+SBA_NOTICE_HTML = """
+<footer style="margin-top: 50px; padding: 20px 0; border-top: 1px solid #333; text-align: center; color: #888; font-size: 14px;">
+    <p style="margin: 5px 0;">Minors are strictly prohibited from participating in gambling activities.</p>
+    <p style="margin: 5px 0; color: #aaa; font-weight: bold;">*Just For School SBA - No Real Money Gambling Included*</p>
+</footer>
+"""
+
+# ---------------------------------------------------------
+# JSON 資料庫持久化儲存邏輯 (Data Persistence)
+# ---------------------------------------------------------
+DB_FILE = 'users.json'
+
+def load_users():
+    """從 JSON 檔案讀取所有使用者帳號與資料，若檔案不存在則自動建立預設 Admin"""
+    if not os.path.exists(DB_FILE):
+        default_data = {
+            "admin": {"password": "1234", "role": "admin", "bank": 1000}
+        }
+        save_users(default_data)
+        return default_data
+    
+    with open(DB_FILE, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+def save_users(users_db):
+    """將最新的使用者資料寫回 users.json 檔案進行存檔"""
+    with open(DB_FILE, 'w', encoding='utf-8') as f:
+        json.dump(users_db, f, ensure_ascii=False, indent=4)
+
+# ---------------------------------------------------------
+# 撲克牌洗牌與 21 點點數計算演算法
+# ---------------------------------------------------------
+
+def create_deck():
+    """建立一副全新的 52 張撲克牌並完成隨機洗牌"""
+    suits = ['♠', '♥', '♦', '♣']
+    ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
+    deck = []
+    for suit in suits:
+        color = 'red' if suit in ['♥', '♦'] else 'black'
+        for rank in ranks:
+            deck.append({'suit': suit, 'rank': rank, 'color': color})
+    random.shuffle(deck)
+    return deck
+
+def render_card_html(card, is_back=False):
+    """將撲克牌資料轉換為前端 HTML/CSS 視覺卡片"""
+    if is_back:
+        return '<div class="card back"></div>'
+    red_class = ' red' if card['color'] == 'red' else ''
+    return f"""
+    <div class="card{red_class}">
+        <div style="font-size: 18px;">{card['rank']}</div>
+        <div style="font-size: 26px; text-align: center; margin-top: 5px;">{card['suit']}</div>
+    </div>
+    """
+
+def calculate_score(hand):
+    """計算手牌點數（包含 Ace 牌自動在 11 分與 1 分之間轉換的邏輯）"""
+    score = 0
+    aces = 0
+    for card in hand:
+        rank = card['rank']
+        if rank in ['J', 'Q', 'K']:
+            score += 10
+        elif rank == 'A':
+            score += 11
+            aces += 1
+        else:
+            score += int(rank)
+    # 若總分爆牌 ( >21 ) 且手上有 Ace，自動將 Ace 降為 1 分
+    while score > 21 and aces > 0:
+        score -= 10
+        aces -= 1
+    return score
+
+# ---------------------------------------------------------
+# 網頁路由邏輯 (Flask Web Routes)
+# ---------------------------------------------------------
+
+# 1. 登入首頁
 @app.route('/')
 def index():
     return render_template('login.html')
 
-# --- 在這裡插入 lobby 路由 ---
-@app.route('/lobby')
-def lobby():
-    # 直接讀取並顯示 templates/lobby.html
-    return render_template('lobby.html')
-
-# 註冊頁面路由：當點擊「申請入會」按鈕時會來到這裡
+# 2. 註冊頁面
 @app.route('/register')
 def register():
-    # 這裡我們讓它去讀取 register.html
     return render_template('register.html')
 
-# 處理註冊請求：當用戶在註冊頁面點擊「確認註冊」時會來到這裡
+# 3. 處理使用者註冊請求（存入 JSON 檔案）
 @app.route('/do_register', methods=['POST'])
 def do_register():
-    # 從表單中拿取用戶設定的資料
     new_user = request.form.get('username')
     new_pwd = request.form.get('password')
-    
-    # 目前我們先做一個簡單的反饋，確保數據有傳過來
-    return f"<h1>註冊成功！</h1><p>歡迎 {new_user} 加入俱樂部。</p><a href='/'>返回登入頁面</a>"
 
-# 【關鍵步奏 3】處理登入請求
+    if not new_user or not new_pwd:
+        return f"""
+        <body style="background-color: #0a1f12; color: white; text-align: center; padding-top: 100px; font-family: sans-serif;">
+            <h1>Registration Failed</h1><p>Please enter both username and password.</p>
+            <a href='/register' style="color: #d4af37;">Try Again</a>
+            {SBA_NOTICE_HTML}
+        </body>
+        """
+
+    users_db = load_users()
+    if new_user in users_db:
+        return f"""
+        <body style="background-color: #0a1f12; color: white; text-align: center; padding-top: 100px; font-family: sans-serif;">
+            <h1>Registration Failed</h1><p>Username <strong>{new_user}</strong> is already taken!</p>
+            <a href='/register' style="color: #d4af37;">Try Again</a>
+            {SBA_NOTICE_HTML}
+        </body>
+        """
+
+    # 新新增玩家預設權限為 player，初始籌碼 $1000
+    users_db[new_user] = {
+        "password": new_pwd,
+        "role": "player",
+        "bank": 1000
+    }
+    save_users(users_db)
+    
+    return f"""
+    <body style="background-color: #0a1f12; color: white; text-align: center; padding-top: 100px; font-family: sans-serif;">
+        <h1 style="color: #2ed573;">🎉 Registration Successful!</h1>
+        <p>Welcome, <strong>{new_user}</strong>! Your starting balance is $1000.</p>
+        <br>
+        <a href="/" style="color: #d4af37; font-size: 18px; text-decoration: none; border: 1px solid #d4af37; padding: 10px 20px; border-radius: 5px;">Go to Login</a>
+        {SBA_NOTICE_HTML}
+    </body>
+    """
+
+# 4. 處理登入驗證邏輯
 @app.route('/login', methods=['POST'])
 def login():
     user = request.form.get('username')
     pwd = request.form.get('password')
 
-    # 暫時的測試邏輯：之後我們會改為檢查 users.txt
-    if user == "admin" and pwd == "1234":
-        # 修正：使用 redirect 讓網址跳轉到 /lobby
-        # 這會去觸發你剛剛在 image_75f951.png 加入的那個 lobby() 函數
+    users_db = load_users()
+    if user in users_db and users_db[user]['password'] == pwd:
+        session['user'] = user
+        session['role'] = users_db[user]['role']
+        session['bank'] = users_db[user]['bank']
         return redirect(url_for('lobby'))
     else:
-        # 登入失敗：維持原本的紅色警告 UI
         return f"""
         <body style="background-color: #1a0a0a; color: #ff4444; font-family: sans-serif; text-align: center; padding-top: 100px;">
-            <h1 style="font-size: 48px;">❌ Log In Fail</h1>
-            <p style="color: white; font-size: 20px;">Wrong Password Or Username</p>
+            <h1 style="font-size: 48px;">❌ Login Failed</h1>
+            <p style="color: white; font-size: 20px;">Invalid Username or Password</p>
             <br>
-            <a href="/" style="color: #888; text-decoration: none; border: 1px solid #444; padding: 10px 20px; border-radius: 5px;">返回登入頁面重試</a>
+            <a href="/" style="color: #888; text-decoration: none; border: 1px solid #444; padding: 10px 20px; border-radius: 5px;">Back to Login Page</a>
+            {SBA_NOTICE_HTML}
         </body>
         """
 
-# 這裡插入處理開始遊戲的路由
-@app.route('/start_game', methods=['POST'])
-def start_game():
-    ai_count = request.form.get('ai_count')
+# 5. 遊戲主大廳（選擇 Bot 數量與入口）
+@app.route('/lobby')
+def lobby():
+    if 'user' not in session:
+        return redirect(url_for('index'))
+
+    current_user = session['user']
+    role = session['role']
+
+    users_db = load_users()
+    if current_user in users_db:
+        session['bank'] = users_db[current_user]['bank']
+
+    # 權限控管：只有 Admin 身分才會顯示後台管理按鈕
+    admin_btn_html = ""
+    if role == 'admin':
+        admin_btn_html = """
+        <a href="/admin_panel" style="position: absolute; top: 20px; right: 120px; background: #d4af37; color: black; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: bold;">
+            👑 Admin Panel
+        </a>
+        """
+
     return f"""
-    <body style="background-color: #0a1f12; color: white; font-family: sans-serif; text-align: center; padding-top: 100px;">
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ background-color: #0a1f12; color: white; font-family: sans-serif; text-align: center; padding-top: 50px; position: relative; }}
+            .btn {{ background: #2ed573; color: white; border: none; padding: 12px 30px; font-size: 18px; border-radius: 8px; cursor: pointer; text-decoration: none; display: inline-block; margin: 10px; }}
+            .logout-btn {{ position: absolute; top: 20px; right: 20px; background: #ff4757; color: white; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: bold; }}
+        </style>
+    </head>
+    <body>
+        <img src="/static/images/wesley_logo.png" style="position: absolute; top: 15px; left: 15px; width: 60px; height: auto;">
         
-        <!-- ✅ 左上角 Logo 代碼放在這裡 -->
-        <img src="/static/images/wesley_logo.png" 
-             style="position: absolute; top: 20px; left: 20px; width: 100px; height: auto;">
-        
-        <h1>🃏 遊戲開始！</h1>
-        <p style="font-size: 20px;">您選擇了與 {ai_count} 名電腦對戰。</p>
-        
-        <!-- 將文字改為按鈕 -->
-        <div style="margin: 30px 0;">
-            <button onclick="window.location.href='/game'" style="background: #d4af37; color: black; border: none; padding: 15px 40px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 20px;">
-                ✅ 我準備好了！
-            </button>
+        {admin_btn_html}
+        <a href="/logout" class="logout-btn">Log Out</a>
+
+        <h1>🎰 Welcome to Blackjack Lobby</h1>
+        <p style="font-size: 20px;">Current Player: <strong>{current_user}</strong> ({'Super Admin' if role == 'admin' else 'Player'})</p>
+        <p style="font-size: 18px; color: #ffd700;">Current Bank: ${session.get('bank', 1000)}</p>
+
+        <div style="margin-top: 40px;">
+            <form action="/start_game" method="POST">
+                <label for="ai_count" style="font-size: 18px;">Select Bot Teammates Count:</label>
+                <select name="ai_count" id="ai_count" style="padding: 8px; font-size: 16px; border-radius: 5px;">
+                    <option value="1">1 Bot</option>
+                    <option value="2">2 Bots</option>
+                    <option value="3">3 Bots</option>
+                </select>
+                <br><br>
+                <button type="submit" class="btn">🚀 Start Game Test</button>
+            </form>
         </div>
 
-        <hr style="width: 300px; border: 0.5px solid #444;">
-        
-        <button onclick="window.location.href='/lobby'" style="color: #888; background: none; border: none; cursor: pointer; font-size: 16px;">
-            ⬅️ 返回重新選擇
-        </button>
+        {SBA_NOTICE_HTML}
+    </body>
+    </html>
+    """
+
+# 6. 超級管理員專屬後台（查看所有會員資料）
+@app.route('/admin_panel')
+def admin_panel():
+    if session.get('role') != 'admin':
+        return f"""
+        <body style="background-color: #111; color: white; text-align: center; padding-top: 100px; font-family: sans-serif;">
+            <h1>🚫 Access Denied! Only Admin can view user data.</h1>
+            <a href='/lobby' style="color: #d4af37;">Back to Lobby</a>
+            {SBA_NOTICE_HTML}
+        </body>
+        """
+
+    users_db = load_users()
+    rows_html = ""
+    for username, info in users_db.items():
+        role_badge = "👑 Admin" if info['role'] == 'admin' else '👤 Player'
+        rows_html += f"""
+        <tr>
+            <td style="padding: 12px; border: 1px solid #444;">{username}</td>
+            <td style="padding: 12px; border: 1px solid #444;">{info['password']}</td>
+            <td style="padding: 12px; border: 1px solid #444;">{role_badge}</td>
+            <td style="padding: 12px; border: 1px solid #444; color: #2ed573; font-weight: bold;">${info['bank']}</td>
+        </tr>
+        """
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ background-color: #111; color: white; font-family: sans-serif; text-align: center; padding: 40px; }}
+            table {{ width: 80%; margin: 20px auto; border-collapse: collapse; background: #222; }}
+            th {{ background: #d4af37; color: black; padding: 12px; font-size: 18px; }}
+        </style>
+    </head>
+    <body>
+        <h1 style="color: #d4af37;">👑 Admin User Management Panel</h1>
+        <p>List of all registered accounts and user details:</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Password</th>
+                    <th>Role Permission</th>
+                    <th>Current Bank ($)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {rows_html}
+            </tbody>
+        </table>
+
+        <br>
+        <a href="/lobby" style="color: #888; text-decoration: none; border: 1px solid #666; padding: 10px 20px; border-radius: 5px;">⬅️ Back to Lobby</a>
+
+        {SBA_NOTICE_HTML}
+    </body>
+    </html>
+    """
+
+# 7. 對局準備過渡頁面
+@app.route('/start_game', methods=['POST'])
+def start_game():
+    ai_count = request.form.get('ai_count', 1)
+    return f"""
+    <body style="background-color: #0a1f12; color: white; font-family: sans-serif; text-align: center; padding-top: 100px;">
+        <img src="/static/images/wesley_logo.png" style="position: absolute; top: 20px; left: 20px; width: 60px; height: auto;">
+        <h1>🃏 Preparing Match</h1>
+        <p style="font-size: 20px;">Playing with {ai_count} Bot(s).</p>
+        <form action="/game" method="POST">
+            <input type="hidden" name="ai_count" value="{ai_count}">
+            <button type="submit" style="background: #d4af37; color: black; border: none; padding: 12px 30px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 18px;">
+                ✅ Enter Table
+            </button>
+        </form>
+
+        {SBA_NOTICE_HTML}
     </body>
     """
 
-# 登出功能：將玩家重定向回登入頁面
+# 8. 登出邏輯（清除 Session）
 @app.route('/logout')
 def logout():
-    # 這裡未來可以加入「清除 Session」的動作
+    session.clear()
     return redirect(url_for('index'))
 
-@app.route('/game')
+# 9. 21 點核心遊戲邏輯 (Game Engine)
+@app.route('/game', methods=['GET', 'POST'])
 def game():
-    return """
-    <body style="background-color: #062111; color: white; font-family: sans-serif; text-align: center; padding-top: 100px;">
-        <img src="/static/images/wesley_logo.png" style="position: absolute; top: 20px; left: 20px; width: 100px; height: auto;">
-        
-        <h1 style="color: #d4af37;">🃏 遊戲桌 (Game Table)</h1>
-        <p>正在初始化遊戲設定...</p>
-        <p style="color: #888;">(明天我們將在這裡完成洗牌與發牌 UI)</p>
-        <br>
-        <button onclick="window.location.href='/lobby'" style="padding: 10px 20px; background: none; border: 1px solid #444; color: #888; cursor: pointer; border-radius: 5px;">
-            終止遊戲並返回大廳
-        </button>
-    </body>
+    if 'user' not in session:
+        return redirect(url_for('index'))
+
+    ai_count = int(request.form.get('ai_count', session.get('ai_count', 1)))
+    session['ai_count'] = ai_count
+    action = request.form.get('action', 'bet_phase')
+
+    quit_btn_html = """
+    <a href="/lobby" style="position: absolute; top: 20px; right: 20px; background: rgba(255, 71, 87, 0.2); color: #ff4757; border: 1px solid #ff4757; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">
+        🚪 Quit Table
+    </a>
     """
 
-# 【關鍵步奏 4】啟動伺服器 (這一段永遠放在檔案的最底層)
+    # 階段 A: 下注階段 (Bet Phase)
+    if action == 'bet_phase':
+        # 破產救援機制：若資產小於等於 0，自動補滿 $1000 救援金並寫入 JSON
+        if session.get('bank', 0) <= 0:
+            session['bank'] = 1000
+            users_db = load_users()
+            if session['user'] in users_db:
+                users_db[session['user']]['bank'] = 1000
+                save_users(users_db)
+
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ background-color: #116235; font-family: Arial, sans-serif; color: white; margin: 0; padding: 20px; text-align: center; position: relative; }}
+                .table {{ max-width: 600px; margin: 60px auto 20px; background: rgba(0,0,0,0.2); padding: 40px; border-radius: 20px; border: 2px solid #2ed573; }}
+                .bet-input {{ padding: 12px; font-size: 20px; width: 120px; text-align: center; border-radius: 8px; border: none; font-weight: bold; margin: 10px; }}
+                .btn-deal {{ background: #2ed573; border: none; color: white; padding: 12px 35px; font-size: 20px; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 15px; }}
+                .bank-tag {{ position: fixed; bottom: 10px; left: 10px; background: #1e272e; padding: 8px 16px; border-radius: 5px; font-size: 16px; font-weight: bold; }}
+            </style>
+        </head>
+        <body>
+            <img src="/static/images/wesley_logo.png" style="position: absolute; top: 15px; left: 15px; width: 60px; height: auto;">
+            {quit_btn_html}
+
+            <div class="table">
+                <h1 style="color: #2ed573;">💰 Place Your Bet</h1>
+                <p style="font-size: 18px;">Player <strong>{session['user']}</strong> Current Balance: <strong>${session['bank']}</strong></p>
+                
+                <form action="/game" method="POST">
+                    <input type="hidden" name="action" value="start_round">
+                    <div style="margin: 20px 0;">
+                        <label style="font-size: 18px;">Enter Bet Amount ($):</label><br>
+                        <input type="number" name="bet" value="100" min="1" max="{session['bank']}" class="bet-input" required>
+                    </div>
+                    <button type="submit" class="btn-deal">🃏 Deal</button>
+                </form>
+            </div>
+
+            <div class="bank-tag">
+                Bank: <span style="color: white;">${session['bank']}</span>
+            </div>
+
+            {SBA_NOTICE_HTML}
+        </body>
+        </html>
+        """
+
+    # 階段 B: 開始發牌 (Deal Phase)
+    if action == 'start_round':
+        bet = int(request.form.get('bet', 100))
+        session['bet'] = bet
+        session['deck'] = create_deck()
+        session['dealer_hand'] = [session['deck'].pop(), session['deck'].pop()]
+        session['player_hand'] = [session['deck'].pop(), session['deck'].pop()]
+        session['bots_hands'] = [[session['deck'].pop(), session['deck'].pop()] for _ in range(ai_count)]
+        session['game_over'] = False
+        session['result_msg'] = ""
+
+    # 階段 C: 玩家要求要牌 (Hit)
+    elif action == 'hit' and not session.get('game_over', False):
+        session['player_hand'].append(session['deck'].pop())
+        if calculate_score(session['player_hand']) > 21:
+            session['game_over'] = True
+            session['bank'] -= session['bet']
+            session['result_msg'] = "💥 You Busted!"
+
+            # 輸光籌碼時，暫留 Bank = $0 以呈現視覺效果，並提示點擊按鈕領取救援金
+            if session['bank'] <= 0:
+                session['bank'] = 0
+                session['result_msg'] += "<br><span style='color: #fffa65; font-size: 20px;'>⚠️ You are bankrupt! Click the button below to receive $1000 rescue fund.</span>"
+
+            # 立即將最新籌碼存回 JSON 檔案
+            users_db = load_users()
+            if session['user'] in users_db:
+                users_db[session['user']]['bank'] = session['bank']
+                save_users(users_db)
+
+            session.modified = True
+
+    # 階段 D: 玩家停牌 (Stand) 並進行莊家對決結算
+    elif action == 'stand' and not session.get('game_over', False):
+        session['game_over'] = True
+        # 莊家規則：點擊未達 17 分前必須強制補牌
+        while calculate_score(session['dealer_hand']) < 17:
+            session['dealer_hand'].append(session['deck'].pop())
+            
+        p_score = calculate_score(session['player_hand'])
+        d_score = calculate_score(session['dealer_hand'])
+        
+        # 比牌勝負邏輯判定
+        if d_score > 21:
+            session['bank'] += session['bet']
+            session['result_msg'] = "🎉 Dealer Busted! You Win!"
+        elif p_score > d_score:
+            session['bank'] += session['bet']
+            session['result_msg'] = "🎉 You Win!"
+        elif p_score < d_score:
+            session['bank'] -= session['bet']
+            session['result_msg'] = "❌ You Lose!"
+        else:
+            session['result_msg'] = "🤝 Push!"
+
+        # 輸光籌碼時，暫留 Bank = $0 以呈現視覺效果，並提示點擊按鈕領取救援金
+        if session['bank'] <= 0:
+            session['bank'] = 0
+            session['result_msg'] += "<br><span style='color: #fffa65; font-size: 20px;'>⚠️ You are bankrupt! Click the button below to receive $1000 rescue fund.</span>"
+
+        # 立即將最新籌碼存回 JSON 檔案
+        users_db = load_users()
+        if session['user'] in users_db:
+            users_db[session['user']]['bank'] = session['bank']
+            save_users(users_db)
+
+        session.modified = True
+
+    # 取得畫面上需要繪製的資料
+    game_over = session.get('game_over', False)
+    player_hand = session.get('player_hand', [])
+    dealer_hand = session.get('dealer_hand', [])
+    bots_hands = session.get('bots_hands', [])
+    bet = session.get('bet', 100)
+
+    # 繪製莊家卡片（未結束前隱藏第一張暗牌）
+    dealer_cards_html = ""
+    if game_over:
+        for card in dealer_hand:
+            dealer_cards_html += render_card_html(card)
+        dealer_score_str = str(calculate_score(dealer_hand))
+    else:
+        dealer_cards_html = render_card_html(dealer_hand[0], is_back=True) + render_card_html(dealer_hand[1])
+        dealer_score_str = "?"
+
+    # 繪製 Bot 隊友卡片
+    ai_players_html = ""
+    for i, b_hand in enumerate(bots_hands, 1):
+        b_cards_html = "".join([render_card_html(c, is_back=not game_over) for c in b_hand])
+        b_score = calculate_score(b_hand) if game_over else "?"
+        ai_players_html += f"""
+        <div style="display: flex; flex-direction: column; align-items: center;">
+            <div class="card-container">{b_cards_html}</div>
+            <div class="score-badge">{b_score} <span>Bot {i}</span></div>
+        </div>
+        """
+
+    # 繪製玩家卡片與分數
+    player_cards_html = "".join([render_card_html(c) for c in player_hand])
+    player_score = calculate_score(player_hand)
+
+    # 根據遊戲是否結束切換操作區域（Hit/Stand 或是 Play Again 按鈕）
+    if not game_over:
+        action_area = f"""
+        <div class="chip-area">
+            <form action="/game" method="POST" style="display: inline;">
+                <input type="hidden" name="action" value="hit">
+                <button type="submit" class="btn-action">➕ Hit</button>
+            </form>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <div class="chip">BET</div>
+                <span style="font-size: 22px; font-weight: bold;">${bet}</span>
+            </div>
+            <form action="/game" method="POST" style="display: inline;">
+                <input type="hidden" name="action" value="stand">
+                <button type="submit" class="btn-action btn-stand">✋ Stand</button>
+            </form>
+        </div>
+        """
+    else:
+        btn_text = "💰 Claim $1000 Rescue Fund & Play Again" if session.get('bank', 0) <= 0 else "🔄 Play Again"
+        action_area = f"""
+        <div style="margin: 20px 0;">
+            <h2 style="color: #ffd700; font-size: 24px; margin-bottom: 15px;">{session.get('result_msg', '')}</h2>
+            <form action="/game" method="POST" style="display: inline;">
+                <input type="hidden" name="action" value="bet_phase">
+                <button type="submit" class="btn-action" style="padding: 12px 30px; font-size: 18px; background: #2ed573;">{btn_text}</button>
+            </form>
+        </div>
+        """
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ background-color: #116235; font-family: Arial, sans-serif; color: white; margin: 0; padding: 20px; user-select: none; position: relative; }}
+            .table {{ max-width: 900px; margin: 0 auto; text-align: center; position: relative; }}
+            .dealer-area {{ margin-bottom: 30px; }}
+            .players-area {{ display: flex; justify-content: center; align-items: flex-end; gap: 40px; margin-top: 20px; }}
+            .card-container {{ display: flex; justify-content: center; margin: 10px 0; }}
+            .card {{ width: 75px; height: 110px; background: white; color: black; border-radius: 8px; box-shadow: 2px 2px 8px rgba(0,0,0,0.5); margin: 0 -15px; position: relative; padding: 5px; box-sizing: border-box; font-weight: bold; }}
+            .card.red {{ color: #d63031; }}
+            .card.back {{ background: #d63031; border: 3px solid white; background-image: repeating-linear-gradient(45deg, #b22222 0, #b22222 10px, #d63031 10px, #d63031 20px); }}
+            .score-badge {{ display: inline-block; background: rgba(0,0,0,0.4); padding: 6px 14px; border-radius: 20px; font-size: 16px; font-weight: bold; }}
+            .score-badge span {{ color: #2ed573; margin-left: 5px; }}
+            .chip-area {{ margin: 20px 0; display: flex; justify-content: center; align-items: center; gap: 20px; }}
+            .chip {{ width: 55px; height: 55px; background: #2ed573; border: 4px dashed white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; }}
+            .btn-action {{ background: #2ed573; border: none; color: white; padding: 10px 22px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; }}
+            .btn-stand {{ background: #e17055; }}
+            .bank-tag {{ position: fixed; bottom: 10px; left: 10px; background: #1e272e; padding: 8px 16px; border-radius: 5px; font-size: 16px; font-weight: bold; }}
+        </style>
+    </head>
+    <body>
+        <img src="/static/images/wesley_logo.png" style="position: absolute; top: 15px; left: 15px; width: 60px; height: auto;">
+        {quit_btn_html}
+
+        <div class="table">
+            <div class="dealer-area">
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <div class="card-container">{dealer_cards_html}</div>
+                    <div class="score-badge">{dealer_score_str} <span style="color: #ff4757;">Dealer</span></div>
+                </div>
+            </div>
+
+            {action_area}
+
+            <div class="players-area">
+                {ai_players_html}
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <div class="card-container">{player_cards_html}</div>
+                    <div class="score-badge">{player_score} <span>{session['user']}</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bank-tag">
+            Bank: <span style="color: white;">${session['bank']}</span>
+        </div>
+
+        {SBA_NOTICE_HTML}
+    </body>
+    </html>
+    """
+
+# 啟動本地測試伺服器
 if __name__ == '__main__':
     app.run(debug=True)

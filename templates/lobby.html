@@ -14,25 +14,28 @@
     </style>
 </head>
 <body>
+    <!-- 左上角固定 Logo -->
     <img src="{{ url_for('static', filename='images/wesley_logo.png') }}" 
-     style="position: absolute; top: 20px; left: 20px; width: 100px; height: auto;">
+         style="position: absolute; top: 20px; left: 20px; width: 100px; height: auto;">
      
     <div class="lobby-card">
-        <img src="{{ url_for('static', filename='images/wesley college logo (1).png') }}" style="width: 100px; height: auto;">
+        <!-- 卡片內部 Logo (修正檔名) -->
+        <img src="{{ url_for('static', filename='images/wesley_logo.png') }}" style="width: 100px; height: auto;">
+        
         <h2>🃏 準備開局</h2>
-        <p>請選擇電腦對手 (AI) 的數量：</p>
+        <p>請選擇電腦隊友 (Bots) 數量：</p>
         
         <form action="/start_game" method="POST">
             <div class="option-group">
                 <select name="ai_count">
-                    <option value="1">1 名電腦玩家</option>
-                    <option value="2">2 名電腦玩家</option>
-                    <option value="3">3 名電腦玩家</option>
+                    <option value="1">1 Bot</option>
+                    <option value="2">2 Bots</option>
+                    <option value="3">3 Bots</option>
                 </select>
             </div>
             <button type="submit" class="btn-start">開始遊戲</button>
         </form>
-        <!-- 在 </form> 標籤後加入這段 -->
+
         <div style="margin-top: 25px; border-top: 1px solid rgba(212, 175, 55, 0.3); padding-top: 15px;">
             <a href="/logout" style="color: #888; text-decoration: none; font-size: 14px; display: inline-block;">
                 🚪 登出帳號並返回首頁
