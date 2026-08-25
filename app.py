@@ -80,7 +80,6 @@ def calculate_score(hand):
             aces += 1
         else:
             score += int(rank)
-    # 若總分爆牌 ( >21 ) 且手上有 Ace，自動將 Ace 降為 1 分
     while score > 21 and aces > 0:
         score -= 10
         aces -= 1
@@ -90,17 +89,22 @@ def calculate_score(hand):
 # 網頁路由邏輯 (Flask Web Routes)
 # ---------------------------------------------------------
 
-# 1. 登入首頁
+# 首頁路由直接導向登入頁面
 @app.route('/')
+def home():
+    return render_template('login.html')
+
+# 登入頁面路由
+@app.route('/login_page')
 def index():
     return render_template('login.html')
 
-# 2. 註冊頁面
+# 註冊頁面
 @app.route('/register')
 def register():
     return render_template('register.html')
 
-# 3. 處理使用者註冊請求（存入 JSON 檔案）
+# 處理使用者註冊請求
 @app.route('/do_register', methods=['POST'])
 def do_register():
     new_user = request.form.get('username')
@@ -125,7 +129,6 @@ def do_register():
         </body>
         """
 
-    # 新新增玩家預設權限為 player，初始籌碼 $1000
     users_db[new_user] = {
         "password": new_pwd,
         "role": "player",
@@ -143,7 +146,7 @@ def do_register():
     </body>
     """
 
-# 4. 處理登入驗證邏輯
+# 處理登入驗證邏輯
 @app.route('/login', methods=['POST'])
 def login():
     user = request.form.get('username')
@@ -166,11 +169,11 @@ def login():
         </body>
         """
 
-# 5. 遊戲主大廳（選擇 Bot 數量與入口）
+# 遊戲主大廳
 @app.route('/lobby')
 def lobby():
     if 'user' not in session:
-        return redirect(url_for('index'))
+        return redirect(url_for('home'))
 
     current_user = session['user']
     role = session['role']
@@ -179,7 +182,6 @@ def lobby():
     if current_user in users_db:
         session['bank'] = users_db[current_user]['bank']
 
-    # 權限控管：只有 Admin 身分才會顯示後台管理按鈕
     admin_btn_html = ""
     if role == 'admin':
         admin_btn_html = """
@@ -199,8 +201,6 @@ def lobby():
         </style>
     </head>
     <body>
-        <img src="/static/images/wesley_logo.png" style="position: absolute; top: 15px; left: 15px; width: 60px; height: auto;">
-        
         {admin_btn_html}
         <a href="/logout" class="logout-btn">Log Out</a>
 
@@ -226,7 +226,7 @@ def lobby():
     </html>
     """
 
-# 6. 超級管理員專屬後台（查看所有會員資料）
+# 超級管理員專屬後台
 @app.route('/admin_panel')
 def admin_panel():
     if session.get('role') != 'admin':
@@ -287,13 +287,12 @@ def admin_panel():
     </html>
     """
 
-# 7. 對局準備過渡頁面
+# 對局準備頁面
 @app.route('/start_game', methods=['POST'])
 def start_game():
     ai_count = request.form.get('ai_count', 1)
     return f"""
     <body style="background-color: #0a1f12; color: white; font-family: sans-serif; text-align: center; padding-top: 100px;">
-        <img src="/static/images/wesley_logo.png" style="position: absolute; top: 20px; left: 20px; width: 60px; height: auto;">
         <h1>🃏 Preparing Match</h1>
         <p style="font-size: 20px;">Playing with {ai_count} Bot(s).</p>
         <form action="/game" method="POST">
@@ -307,17 +306,17 @@ def start_game():
     </body>
     """
 
-# 8. 登出邏輯（清除 Session）
+# 登出邏輯
 @app.route('/logout')
 def logout():
     session.clear()
-    return redirect(url_for('index'))
+    return redirect(url_for('home'))
 
-# 9. 21 點核心遊戲邏輯 (Game Engine)
+# 21 點核心遊戲邏輯
 @app.route('/game', methods=['GET', 'POST'])
 def game():
     if 'user' not in session:
-        return redirect(url_for('index'))
+        return redirect(url_for('home'))
 
     ai_count = int(request.form.get('ai_count', session.get('ai_count', 1)))
     session['ai_count'] = ai_count
@@ -329,9 +328,7 @@ def game():
     </a>
     """
 
-    # 階段 A: 下注階段 (Bet Phase)
     if action == 'bet_phase':
-        # 破產救援機制：若資產小於等於 0，自動補滿 $1000 救援金並寫入 JSON
         if session.get('bank', 0) <= 0:
             session['bank'] = 1000
             users_db = load_users()
@@ -352,7 +349,6 @@ def game():
             </style>
         </head>
         <body>
-            <img src="/static/images/wesley_logo.png" style="position: absolute; top: 15px; left: 15px; width: 60px; height: auto;">
             {quit_btn_html}
 
             <div class="table">
@@ -378,7 +374,6 @@ def game():
         </html>
         """
 
-    # 階段 B: 開始發牌 (Deal Phase)
     if action == 'start_round':
         bet = int(request.form.get('bet', 100))
         session['bet'] = bet
@@ -389,7 +384,6 @@ def game():
         session['game_over'] = False
         session['result_msg'] = ""
 
-    # 階段 C: 玩家要求要牌 (Hit)
     elif action == 'hit' and not session.get('game_over', False):
         session['player_hand'].append(session['deck'].pop())
         if calculate_score(session['player_hand']) > 21:
@@ -397,12 +391,10 @@ def game():
             session['bank'] -= session['bet']
             session['result_msg'] = "💥 You Busted!"
 
-            # 輸光籌碼時，暫留 Bank = $0 以呈現視覺效果，並提示點擊按鈕領取救援金
             if session['bank'] <= 0:
                 session['bank'] = 0
                 session['result_msg'] += "<br><span style='color: #fffa65; font-size: 20px;'>⚠️ You are bankrupt! Click the button below to receive $1000 rescue fund.</span>"
 
-            # 立即將最新籌碼存回 JSON 檔案
             users_db = load_users()
             if session['user'] in users_db:
                 users_db[session['user']]['bank'] = session['bank']
@@ -410,17 +402,14 @@ def game():
 
             session.modified = True
 
-    # 階段 D: 玩家停牌 (Stand) 並進行莊家對決結算
     elif action == 'stand' and not session.get('game_over', False):
         session['game_over'] = True
-        # 莊家規則：點擊未達 17 分前必須強制補牌
         while calculate_score(session['dealer_hand']) < 17:
             session['dealer_hand'].append(session['deck'].pop())
             
         p_score = calculate_score(session['player_hand'])
         d_score = calculate_score(session['dealer_hand'])
         
-        # 比牌勝負邏輯判定
         if d_score > 21:
             session['bank'] += session['bet']
             session['result_msg'] = "🎉 Dealer Busted! You Win!"
@@ -433,12 +422,10 @@ def game():
         else:
             session['result_msg'] = "🤝 Push!"
 
-        # 輸光籌碼時，暫留 Bank = $0 以呈現視覺效果，並提示點擊按鈕領取救援金
         if session['bank'] <= 0:
             session['bank'] = 0
             session['result_msg'] += "<br><span style='color: #fffa65; font-size: 20px;'>⚠️ You are bankrupt! Click the button below to receive $1000 rescue fund.</span>"
 
-        # 立即將最新籌碼存回 JSON 檔案
         users_db = load_users()
         if session['user'] in users_db:
             users_db[session['user']]['bank'] = session['bank']
@@ -446,14 +433,12 @@ def game():
 
         session.modified = True
 
-    # 取得畫面上需要繪製的資料
     game_over = session.get('game_over', False)
     player_hand = session.get('player_hand', [])
     dealer_hand = session.get('dealer_hand', [])
     bots_hands = session.get('bots_hands', [])
     bet = session.get('bet', 100)
 
-    # 繪製莊家卡片（未結束前隱藏第一張暗牌）
     dealer_cards_html = ""
     if game_over:
         for card in dealer_hand:
@@ -463,7 +448,6 @@ def game():
         dealer_cards_html = render_card_html(dealer_hand[0], is_back=True) + render_card_html(dealer_hand[1])
         dealer_score_str = "?"
 
-    # 繪製 Bot 隊友卡片
     ai_players_html = ""
     for i, b_hand in enumerate(bots_hands, 1):
         b_cards_html = "".join([render_card_html(c, is_back=not game_over) for c in b_hand])
@@ -475,11 +459,9 @@ def game():
         </div>
         """
 
-    # 繪製玩家卡片與分數
     player_cards_html = "".join([render_card_html(c) for c in player_hand])
     player_score = calculate_score(player_hand)
 
-    # 根據遊戲是否結束切換操作區域（Hit/Stand 或是 Play Again 按鈕）
     if not game_over:
         action_area = f"""
         <div class="chip-area">
@@ -532,7 +514,6 @@ def game():
         </style>
     </head>
     <body>
-        <img src="/static/images/wesley_logo.png" style="position: absolute; top: 15px; left: 15px; width: 60px; height: auto;">
         {quit_btn_html}
 
         <div class="table">
@@ -563,6 +544,6 @@ def game():
     </html>
     """
 
-# 啟動本地測試伺服器
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
