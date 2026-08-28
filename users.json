@@ -8,5 +8,10 @@
         "password": "0987",
         "role": "player",
         "bank": 1000
+    },
+    "Hiram": {
+        "password": "212",
+        "role": "player",
+        "bank": 1000
     }
 }
