@@ -13,5 +13,15 @@
         "password": "212",
         "role": "player",
         "bank": 1000
+    },
+    "Chris": {
+        "password": "666666",
+        "role": "player",
+        "bank": 1000
+    },
+    "Casper": {
+        "password": "666666",
+        "role": "player",
+        "bank": 1000
     }
 }
