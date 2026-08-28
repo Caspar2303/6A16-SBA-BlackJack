@@ -172,7 +172,7 @@ def start_game():
     </head>
     <body>
         {LOGO_HTML}
-        <h1>🃏 Ready to Start</h1>
+        <h1>♠️♦️Ready to Start♥️♣️</h1>
         <p style="font-size: 20px;">Playing with {ai_count} Bot(s) at the table.</p>
         
         <form action="/game" method="POST">
@@ -272,7 +272,7 @@ def game():
                         <button type="button" class="chip-btn" style="background:#ff4757; color:white;" onclick="clearBet()">Clear</button>
                     </div>
 
-                    <button type="submit" class="btn-deal">🃏 Deal</button>
+                    <button type="submit" class="btn-deal">Deal</button>
                 </form>
             </div>
             {SBA_NOTICE_HTML}
@@ -472,7 +472,7 @@ def render_game_screen(ai_count, quit_btn_html):
     <body>
         {LOGO_HTML}
         {quit_btn_html}
-        <h1>🃏 Blackjack Table</h1>
+        <h1>♠️♦️Blackjack Table♥️♣️</h1>
         <div style="background: rgba(0,0,0,0.3); display: inline-block; padding: 15px 30px; border-radius: 15px;">
             <h3>Dealer ({dealer_score_display} pts)</h3>
             <div>{dealer_cards}</div>
