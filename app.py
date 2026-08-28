@@ -6,9 +6,7 @@ from flask import Flask, render_template, request, redirect, url_for, session
 app = Flask(__name__)
 app.secret_key = 'black_jack_secret_key_wesley'
 
-# ---------------------------------------------------------
-# SBA 免責聲明組件
-# ---------------------------------------------------------
+# 頁尾免責聲明與 Logo 標籤
 SBA_NOTICE_HTML = """
 <footer style="margin-top: 50px; padding: 20px 0; border-top: 1px solid #333; text-align: center; color: #888; font-size: 14px;">
     <p style="margin: 5px 0;">Minors are strictly prohibited from participating in gambling activities.</p>
@@ -16,19 +14,15 @@ SBA_NOTICE_HTML = """
 </footer>
 """
 
-# ---------------------------------------------------------
-# JSON 資料庫持久化儲存邏輯
-# ---------------------------------------------------------
+LOGO_HTML = '<img src="/static/images/wesley_logo.png" style="position: absolute; top: 20px; left: 20px; width: 100px; height: auto;" alt="Logo">'
 DB_FILE = 'users.json'
 
+# --- [資料庫操作] ---
 def load_users():
     if not os.path.exists(DB_FILE):
-        default_data = {
-            "admin": {"password": "1234", "role": "admin", "bank": 1000}
-        }
+        default_data = {"admin": {"password": "1234", "role": "admin", "bank": 1000}}
         save_users(default_data)
         return default_data
-    
     with open(DB_FILE, 'r', encoding='utf-8') as f:
         return json.load(f)
 
@@ -36,72 +30,38 @@ def save_users(users_db):
     with open(DB_FILE, 'w', encoding='utf-8') as f:
         json.dump(users_db, f, ensure_ascii=False, indent=4)
 
-# =========================================================
-# ICT DSE Concept 1: Linear Search Algorithm (線性搜尋)
-# =========================================================
 def linear_search_user(target_username, users_db):
-    """
-    ICT Concept: Linear Search
-    Purpose: Iterates through the list of users to check if a username exists (case-insensitive).
-    """
     user_list = list(users_db.keys())
     i = 0
     found = False
-    
     while i < len(user_list) and not found:
         if user_list[i].lower() == target_username.lower():
             found = True
         i += 1
-        
     return found
 
-# =========================================================
-# ICT DSE Concept 2: Bubble Sort Algorithm (氣泡排序法)
-# =========================================================
 def bubble_sort_leaderboard(users_data_list):
-    """
-    ICT Concept: Bubble Sort
-    Purpose: Sorts user records in descending order based on their bank balance for the Leaderboard.
-    """
     n = len(users_data_list)
-    # Outer loop for passes
     for i in range(n - 1):
-        # Inner loop for adjacent comparisons
         for j in range(0, n - i - 1):
             if users_data_list[j]['bank'] < users_data_list[j + 1]['bank']:
-                # Swap elements if current is smaller than next (Descending order)
                 temp = users_data_list[j]
                 users_data_list[j] = users_data_list[j + 1]
                 users_data_list[j + 1] = temp
-                
     return users_data_list
 
-# =========================================================
-# ICT DSE Concept 3: Data Validation (資料驗證)
-# =========================================================
 def validate_bet_amount(bet_input, player_bank):
-    """
-    ICT Concept: Data Validation (Presence, Type, and Range Checks)
-    """
-    # 1. Presence Check
     if bet_input is None or str(bet_input).strip() == "":
         return False, "Bet amount is required."
-    
-    # 2. Type Check
     try:
         bet_val = int(bet_input)
     except ValueError:
         return False, "Bet amount must be an integer."
-        
-    # 3. Range Check
     if bet_val < 1 or bet_val > player_bank:
         return False, f"Bet must be between $1 and ${player_bank}."
-        
     return True, bet_val
 
-# ---------------------------------------------------------
-# 撲克牌洗牌與點數計算演算法
-# ---------------------------------------------------------
+# --- [撲克牌遊戲邏輯] ---
 def create_deck():
     suits = ['♠', '♥', '♦', '♣']
     ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
@@ -125,6 +85,8 @@ def render_card_html(card, is_back=False):
     """
 
 def calculate_score(hand):
+    if not hand:
+        return 0
     score = 0
     aces = 0
     for card in hand:
@@ -141,15 +103,11 @@ def calculate_score(hand):
         aces -= 1
     return score
 
-# ---------------------------------------------------------
-# 網頁路由邏輯
-# ---------------------------------------------------------
-@app.route('/')
-def home():
-    return render_template('login.html')
+# --- [路由區域] ---
 
+@app.route('/')
 @app.route('/login_page')
-def index():
+def home():
     return render_template('login.html')
 
 @app.route('/register')
@@ -162,42 +120,15 @@ def do_register():
     new_pwd = request.form.get('password', '').strip()
 
     if not new_user or not new_pwd:
-        return f"""
-        <body style="background-color: #0a1f12; color: white; text-align: center; padding-top: 100px; font-family: sans-serif;">
-            <h1>Registration Failed</h1><p>Please enter both username and password.</p>
-            <a href='/register' style="color: #d4af37;">Try Again</a>
-            {SBA_NOTICE_HTML}
-        </body>
-        """
+        return render_template('register.html', error="Please enter both username and password.")
 
     users_db = load_users()
-    
-    # 應用 ICT Linear Search 演算法檢查帳號重複
     if linear_search_user(new_user, users_db):
-        return f"""
-        <body style="background-color: #0a1f12; color: white; text-align: center; padding-top: 100px; font-family: sans-serif;">
-            <h1>Registration Failed</h1><p>Username <strong>{new_user}</strong> is already taken!</p>
-            <a href='/register' style="color: #d4af37;">Try Again</a>
-            {SBA_NOTICE_HTML}
-        </body>
-        """
+        return render_template('register.html', error=f"Username '{new_user}' is already taken!")
 
-    users_db[new_user] = {
-        "password": new_pwd,
-        "role": "player",
-        "bank": 1000
-    }
+    users_db[new_user] = {"password": new_pwd, "role": "player", "bank": 1000}
     save_users(users_db)
-    
-    return f"""
-    <body style="background-color: #0a1f12; color: white; text-align: center; padding-top: 100px; font-family: sans-serif;">
-        <h1 style="color: #2ed573;">🎉 Registration Successful!</h1>
-        <p>Welcome, <strong>{new_user}</strong>! Your starting balance is $1000.</p>
-        <br>
-        <a href="/" style="color: #d4af37; font-size: 18px; text-decoration: none; border: 1px solid #d4af37; padding: 10px 20px; border-radius: 5px;">Go to Login</a>
-        {SBA_NOTICE_HTML}
-    </body>
-    """
+    return redirect(url_for('home'))
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -211,15 +142,7 @@ def login():
         session['bank'] = users_db[user]['bank']
         return redirect(url_for('lobby'))
     else:
-        return f"""
-        <body style="background-color: #1a0a0a; color: #ff4444; font-family: sans-serif; text-align: center; padding-top: 100px;">
-            <h1 style="font-size: 48px;">❌ Login Failed</h1>
-            <p style="color: white; font-size: 20px;">Invalid Username or Password</p>
-            <br>
-            <a href="/" style="color: #888; text-decoration: none; border: 1px solid #444; padding: 10px 20px; border-radius: 5px;">Back to Login Page</a>
-            {SBA_NOTICE_HTML}
-        </body>
-        """
+        return render_template('login.html', error="Invalid username or password.")
 
 @app.route('/lobby')
 def lobby():
@@ -227,145 +150,41 @@ def lobby():
         return redirect(url_for('home'))
 
     current_user = session['user']
-    role = session['role']
-
     users_db = load_users()
     if current_user in users_db:
         session['bank'] = users_db[current_user]['bank']
 
-    admin_btn_html = ""
-    if role == 'admin':
-        admin_btn_html = """
-        <a href="/admin_panel" style="position: absolute; top: 20px; right: 120px; background: #d4af37; color: black; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: bold;">
-            👑 Admin Panel
-        </a>
-        """
-
-    return f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{ background-color: #0a1f12; color: white; font-family: sans-serif; text-align: center; padding-top: 50px; position: relative; }}
-            .btn {{ background: #2ed573; color: white; border: none; padding: 12px 30px; font-size: 18px; border-radius: 8px; cursor: pointer; text-decoration: none; display: inline-block; margin: 10px; }}
-            .logout-btn {{ position: absolute; top: 20px; right: 20px; background: #ff4757; color: white; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: bold; }}
-        </style>
-    </head>
-    <body>
-        {admin_btn_html}
-        <a href="/logout" class="logout-btn">Log Out</a>
-
-        <h1>🎰 Welcome to Blackjack Lobby</h1>
-        <p style="font-size: 20px;">Current Player: <strong>{current_user}</strong> ({'Super Admin' if role == 'admin' else 'Player'})</p>
-        <p style="font-size: 18px; color: #ffd700;">Current Bank: ${session.get('bank', 1000)}</p>
-
-        <div style="margin-top: 40px;">
-            <form action="/start_game" method="POST">
-                <label for="ai_count" style="font-size: 18px;">Select Bot Teammates Count:</label>
-                <select name="ai_count" id="ai_count" style="padding: 8px; font-size: 16px; border-radius: 5px;">
-                    <option value="1">1 Bot</option>
-                    <option value="2">2 Bots</option>
-                    <option value="3">3 Bots</option>
-                </select>
-                <br><br>
-                <button type="submit" class="btn">🚀 Start Game Test</button>
-            </form>
-        </div>
-
-        {SBA_NOTICE_HTML}
-    </body>
-    </html>
-    """
-
-@app.route('/admin_panel')
-def admin_panel():
-    if session.get('role') != 'admin':
-        return f"""
-        <body style="background-color: #111; color: white; text-align: center; padding-top: 100px; font-family: sans-serif;">
-            <h1>🚫 Access Denied! Only Admin can view user data.</h1>
-            <a href='/lobby' style="color: #d4af37;">Back to Lobby</a>
-            {SBA_NOTICE_HTML}
-        </body>
-        """
-
-    users_db = load_users()
-    
-    # 準備資料並調用 Bubble Sort 進行 Leaderboard 排序
-    raw_user_list = []
-    for username, info in users_db.items():
-        raw_user_list.append({
-            'username': username,
-            'password': info['password'],
-            'role': info['role'],
-            'bank': info['bank']
-        })
-        
-    sorted_user_list = bubble_sort_leaderboard(raw_user_list)
-
-    rows_html = ""
-    for info in sorted_user_list:
-        role_badge = "👑 Admin" if info['role'] == 'admin' else '👤 Player'
-        rows_html += f"""
-        <tr>
-            <td style="padding: 12px; border: 1px solid #444;">{info['username']}</td>
-            <td style="padding: 12px; border: 1px solid #444;">{info['password']}</td>
-            <td style="padding: 12px; border: 1px solid #444;">{role_badge}</td>
-            <td style="padding: 12px; border: 1px solid #444; color: #2ed573; font-weight: bold;">${info['bank']}</td>
-        </tr>
-        """
-
-    return f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{ background-color: #111; color: white; font-family: sans-serif; text-align: center; padding: 40px; }}
-            table {{ width: 80%; margin: 20px auto; border-collapse: collapse; background: #222; }}
-            th {{ background: #d4af37; color: black; padding: 12px; font-size: 18px; }}
-        </style>
-    </head>
-    <body>
-        <h1 style="color: #d4af37;">👑 Admin User Management Panel</h1>
-        <p>Sorted by Balance using <strong>Bubble Sort Algorithm</strong>:</p>
-
-        <table>
-            <thead>
-                <tr>
-                    <th>Username</th>
-                    <th>Password</th>
-                    <th>Role Permission</th>
-                    <th>Current Bank ($)</th>
-                </tr>
-            </thead>
-            <tbody>
-                {rows_html}
-            </tbody>
-        </table>
-
-        <br>
-        <a href="/lobby" style="color: #888; text-decoration: none; border: 1px solid #666; padding: 10px 20px; border-radius: 5px;">⬅️ Back to Lobby</a>
-
-        {SBA_NOTICE_HTML}
-    </body>
-    </html>
-    """
+    return render_template('lobby.html', current_user=current_user, role=session['role'], bank=session.get('bank', 1000))
 
 @app.route('/start_game', methods=['POST'])
 def start_game():
     ai_count = request.form.get('ai_count', 1)
     return f"""
-    <body style="background-color: #0a1f12; color: white; font-family: sans-serif; text-align: center; padding-top: 100px;">
-        <h1>🃏 Preparing Match</h1>
-        <p style="font-size: 20px;">Playing with {ai_count} Bot(s).</p>
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Ready to Play</title>
+        <style>
+            body {{ background-color: #0a1f12; color: white; font-family: sans-serif; text-align: center; padding-top: 100px; margin: 0; }}
+            .btn-enter {{ background: #d4af37; color: black; border: none; padding: 12px 30px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 18px; width: 180px; margin-bottom: 15px; }}
+            .btn-quit {{ background: #e74c3c; color: white; border: none; padding: 10px 25px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; width: 180px; text-decoration: none; display: inline-block; }}
+        </style>
+    </head>
+    <body>
+        {LOGO_HTML}
+        <h1>🃏 Ready to Start</h1>
+        <p style="font-size: 20px;">Playing with {ai_count} Bot(s) at the table.</p>
+        
         <form action="/game" method="POST">
             <input type="hidden" name="ai_count" value="{ai_count}">
-            <button type="submit" style="background: #d4af37; color: black; border: none; padding: 12px 30px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 18px;">
-                ✅ Enter Table
-            </button>
+            <button type="submit" class="btn-enter">✅ Enter Table</button>
         </form>
+        <br>
+        <a href="/lobby" class="btn-quit">🚪 Quit to Lobby</a>
 
         {SBA_NOTICE_HTML}
     </body>
+    </html>
     """
 
 @app.route('/logout')
@@ -383,14 +202,24 @@ def game():
     action = request.form.get('action', 'bet_phase')
 
     quit_btn_html = """
-    <a href="/lobby" style="position: absolute; top: 20px; right: 20px; background: rgba(255, 71, 87, 0.2); color: #ff4757; border: 1px solid #ff4757; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px; z-index: 9999;">
-        🚪 Quit Table
+    <a href="/lobby" style="position: absolute; top: 20px; right: 20px; background: rgba(255, 71, 87, 0.2); color: #ff4757; border: 1px solid #ff4757; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">
+        🚪 Quit to Lobby
     </a>
     """
 
     if action == 'bet_phase':
+        refilled_modal_html = ""
         if session.get('bank', 0) <= 0:
             session['bank'] = 1000
+            refilled_modal_html = """
+            <div id="refillModal" style="position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center;">
+                <div style="background: #0a1f12; border: 2px solid #d4af37; padding: 30px; border-radius: 15px; text-align: center; max-width: 400px; color: white; box-shadow: 0 5px 15px rgba(0,0,0,0.5);">
+                    <h2 style="color: #d4af37; margin-top: 0;">💰 System Notice</h2>
+                    <p style="font-size: 16px; line-height: 1.5;">Your bank becomes 0, we auto-reload your bank to 1000!</p>
+                    <button onclick="document.getElementById('refillModal').style.display='none'" style="background: #2ed573; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 15px;">OK!</button>
+                </div>
+            </div>
+            """
             users_db = load_users()
             if session['user'] in users_db:
                 users_db[session['user']]['bank'] = 1000
@@ -400,35 +229,52 @@ def game():
         <!DOCTYPE html>
         <html>
         <head>
+            <title>Place Your Bet</title>
             <style>
                 body {{ background-color: #116235; font-family: Arial, sans-serif; color: white; margin: 0; padding: 20px; text-align: center; position: relative; }}
                 .table {{ max-width: 600px; margin: 60px auto 20px; background: rgba(0,0,0,0.2); padding: 40px; border-radius: 20px; border: 2px solid #2ed573; }}
-                .bet-input {{ padding: 12px; font-size: 20px; width: 120px; text-align: center; border-radius: 8px; border: none; font-weight: bold; margin: 10px; }}
-                .btn-deal {{ background: #2ed573; border: none; color: white; padding: 12px 35px; font-size: 20px; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 15px; }}
-                .bank-tag {{ position: fixed; bottom: 10px; left: 10px; background: #1e272e; padding: 8px 16px; border-radius: 5px; font-size: 16px; font-weight: bold; }}
+                .bet-input {{ padding: 12px; font-size: 24px; width: 140px; text-align: center; border-radius: 8px; border: none; font-weight: bold; margin: 10px; }}
+                .chip-btn {{ background: #d4af37; color: black; border: none; padding: 8px 15px; margin: 5px; border-radius: 20px; font-weight: bold; cursor: pointer; font-size: 14px; }}
+                .chip-btn:hover {{ background: #f1c40f; }}
+                .btn-deal {{ background: #2ed573; border: none; color: white; padding: 12px 35px; font-size: 20px; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 20px; }}
             </style>
+            <script>
+                function addBet(amount) {{
+                    var input = document.getElementById('bet_input');
+                    var current = parseInt(input.value) || 0;
+                    var maxBank = {session['bank']};
+                    var newVal = current + amount;
+                    if (newVal > maxBank) newVal = maxBank;
+                    input.value = newVal;
+                }}
+                function clearBet() {{
+                    document.getElementById('bet_input').value = 0;
+                }}
+            </script>
         </head>
         <body>
+            {refilled_modal_html}
+            {LOGO_HTML}
             {quit_btn_html}
-
             <div class="table">
                 <h1 style="color: #2ed573;">💰 Place Your Bet</h1>
-                <p style="font-size: 18px;">Player <strong>{session['user']}</strong> Current Balance: <strong>${session['bank']}</strong></p>
+                <p style="font-size: 18px;">Player <strong>{session['user']}</strong> Balance: <strong>${session['bank']}</strong></p>
                 
                 <form action="/game" method="POST">
                     <input type="hidden" name="action" value="start_round">
-                    <div style="margin: 20px 0;">
-                        <label style="font-size: 18px;">Enter Bet Amount ($):</label><br>
-                        <input type="number" name="bet" value="100" min="1" max="{session['bank']}" class="bet-input" required>
+                    <input type="number" id="bet_input" name="bet" value="100" min="1" max="{session['bank']}" class="bet-input" required><br>
+                    
+                    <div style="margin: 15px 0;">
+                        <button type="button" class="chip-btn" onclick="addBet(10)">+10</button>
+                        <button type="button" class="chip-btn" onclick="addBet(20)">+20</button>
+                        <button type="button" class="chip-btn" onclick="addBet(50)">+50</button>
+                        <button type="button" class="chip-btn" onclick="addBet(100)">+100</button>
+                        <button type="button" class="chip-btn" style="background:#ff4757; color:white;" onclick="clearBet()">Clear</button>
                     </div>
+
                     <button type="submit" class="btn-deal">🃏 Deal</button>
                 </form>
             </div>
-
-            <div class="bank-tag">
-                Bank: <span style="color: white;">${session['bank']}</span>
-            </div>
-
             {SBA_NOTICE_HTML}
         </body>
         </html>
@@ -436,126 +282,177 @@ def game():
 
     if action == 'start_round':
         bet_raw = request.form.get('bet')
-        # 呼求 ICT Data Validation 函數驗證輸入
         is_valid, bet_or_msg = validate_bet_amount(bet_raw, session.get('bank', 1000))
-        
         if not is_valid:
             return f"<script>alert('{bet_or_msg}'); window.history.back();</script>"
             
-        bet = bet_or_msg
-        session['bet'] = bet
+        session['bet'] = bet_or_msg
         session['deck'] = create_deck()
         session['dealer_hand'] = [session['deck'].pop(), session['deck'].pop()]
         session['player_hand'] = [session['deck'].pop(), session['deck'].pop()]
+        session['player_hand2'] = []
+        session['active_hand'] = 1
+        session['is_split'] = False
         session['bots_hands'] = [[session['deck'].pop(), session['deck'].pop()] for _ in range(ai_count)]
         session['game_over'] = False
-        session['result_msg'] = ""
+
+    elif action == 'split' and not session.get('game_over', False):
+        p_hand = session.get('player_hand', [])
+        current_bank = session.get('bank', 0)
+        current_bet = session.get('bet', 0)
+
+        if len(p_hand) == 2 and p_hand[0]['rank'] == p_hand[1]['rank'] and current_bank >= current_bet * 2:
+            session['is_split'] = True
+            session['player_hand2'] = [p_hand.pop()]
+            session['player_hand'].append(session['deck'].pop())
+            session['player_hand2'].append(session['deck'].pop())
 
     elif action == 'hit' and not session.get('game_over', False):
-        session['player_hand'].append(session['deck'].pop())
-        if calculate_score(session['player_hand']) > 21:
-            session['game_over'] = True
-            session['bank'] -= session['bet']
-            session['result_msg'] = "💥 You Busted!"
-
-            if session['bank'] <= 0:
-                session['bank'] = 0
-                session['result_msg'] += "<br><span style='color: #fffa65; font-size: 20px;'>⚠️ You are bankrupt! Click the button below to receive $1000 rescue fund.</span>"
-
-            users_db = load_users()
-            if session['user'] in users_db:
-                users_db[session['user']]['bank'] = session['bank']
-                save_users(users_db)
-
-            session.modified = True
+        active_hand = session.get('active_hand', 1)
+        if active_hand == 1:
+            session['player_hand'].append(session['deck'].pop())
+            if calculate_score(session['player_hand']) > 21:
+                if session.get('is_split', False):
+                    session['active_hand'] = 2
+                else:
+                    session['game_over'] = True
+                    process_game_settlement()
+        else:
+            session['player_hand2'].append(session['deck'].pop())
+            if calculate_score(session['player_hand2']) > 21:
+                session['game_over'] = True
+                process_game_settlement()
 
     elif action == 'stand' and not session.get('game_over', False):
-        session['game_over'] = True
-        while calculate_score(session['dealer_hand']) < 17:
-            session['dealer_hand'].append(session['deck'].pop())
-            
-        p_score = calculate_score(session['player_hand'])
-        d_score = calculate_score(session['dealer_hand'])
-        
-        if d_score > 21:
-            session['bank'] += session['bet']
-            session['result_msg'] = "🎉 Dealer Busted! You Win!"
-        elif p_score > d_score:
-            session['bank'] += session['bet']
-            session['result_msg'] = "🎉 You Win!"
-        elif p_score < d_score:
-            session['bank'] -= session['bet']
-            session['result_msg'] = "❌ You Lose!"
+        active_hand = session.get('active_hand', 1)
+        if active_hand == 1 and session.get('is_split', False):
+            session['active_hand'] = 2
         else:
-            session['result_msg'] = "🤝 Push!"
+            session['game_over'] = True
+            process_game_settlement()
 
-        if session['bank'] <= 0:
-            session['bank'] = 0
-            session['result_msg'] += "<br><span style='color: #fffa65; font-size: 20px;'>⚠️ You are bankrupt! Click the button below to receive $1000 rescue fund.</span>"
+    return render_game_screen(ai_count, quit_btn_html)
 
-        users_db = load_users()
-        if session['user'] in users_db:
-            users_db[session['user']]['bank'] = session['bank']
-            save_users(users_db)
+def process_game_settlement():
+    for i in range(len(session.get('bots_hands', []))):
+        while calculate_score(session['bots_hands'][i]) < 17:
+            session['bots_hands'][i].append(session['deck'].pop())
 
-        session.modified = True
+    while calculate_score(session['dealer_hand']) < 17:
+        session['dealer_hand'].append(session['deck'].pop())
 
+    d_score = calculate_score(session['dealer_hand'])
+    p1_score = calculate_score(session['player_hand'])
+    p2_score = calculate_score(session['player_hand2'])
+    is_split = session.get('is_split', False)
+    bet = session.get('bet', 0)
+
+    total_change = 0
+    msg = ""
+
+    if p1_score > 21:
+        total_change -= bet
+        msg += "Hand 1: 💥Bust | "
+    elif d_score > 21 or p1_score > d_score:
+        total_change += bet
+        msg += "Hand 1: 🎉Win | "
+    elif p1_score < d_score:
+        total_change -= bet
+        msg += "Hand 1: ❌Loss | "
+    else:
+        msg += "Hand 1: 🤝Push | "
+
+    if is_split:
+        if p2_score > 21:
+            total_change -= bet
+            msg += "Hand 2: 💥Bust"
+        elif d_score > 21 or p2_score > d_score:
+            total_change += bet
+            msg += "Hand 2: 🎉Win"
+        elif p2_score < d_score:
+            total_change -= bet
+            msg += "Hand 2: ❌Loss"
+        else:
+            msg += "Hand 2: 🤝Push"
+
+    session['bank'] += total_change
+    session['result_msg'] = msg
+
+    users_db = load_users()
+    if session['user'] in users_db:
+        users_db[session['user']]['bank'] = session['bank']
+        save_users(users_db)
+
+def render_game_screen(ai_count, quit_btn_html):
     game_over = session.get('game_over', False)
-    player_hand = session.get('player_hand', [])
     dealer_hand = session.get('dealer_hand', [])
-    bots_hands = session.get('bots_hands', [])
-    bet = session.get('bet', 100)
+    player_hand = session.get('player_hand', [])
+    player_hand2 = session.get('player_hand2', [])
+    is_split = session.get('is_split', False)
+    active_hand = session.get('active_hand', 1)
+    bank = session.get('bank', 0)
+    bet = session.get('bet', 0)
 
-    dealer_cards_html = ""
-    if game_over:
-        for card in dealer_hand:
-            dealer_cards_html += render_card_html(card)
-        dealer_score_str = str(calculate_score(dealer_hand))
-    else:
-        dealer_cards_html = render_card_html(dealer_hand[0], is_back=True) + render_card_html(dealer_hand[1])
-        dealer_score_str = "?"
+    dealer_cards = "".join([render_card_html(c, is_back=not game_over and i==0) for i, c in enumerate(dealer_hand)])
+    player_cards = "".join([render_card_html(c) for c in player_hand])
+    player_cards2 = "".join([render_card_html(c) for c in player_hand2]) if is_split else ""
 
-    ai_players_html = ""
-    for i, b_hand in enumerate(bots_hands, 1):
-        b_cards_html = "".join([render_card_html(c, is_back=not game_over) for c in b_hand])
-        b_score = calculate_score(b_hand) if game_over else "?"
-        ai_players_html += f"""
-        <div style="display: flex; flex-direction: column; align-items: center;">
-            <div class="card-container">{b_cards_html}</div>
-            <div class="score-badge">{b_score} <span>Bot {i}</span></div>
+    bots_html = ""
+    for idx, bot_hand in enumerate(session.get('bots_hands', [])):
+        bot_cards = "".join([render_card_html(c, is_back=not game_over) for c in bot_hand])
+        bot_score_str = f" ({calculate_score(bot_hand)} pts)" if game_over else ""
+        bots_html += f"""
+        <div style='background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; min-width: 180px;'>
+            <h4>🤖 Bot {idx+1}{bot_score_str}</h4>
+            <div>{bot_cards}</div>
         </div>
         """
 
-    player_cards_html = "".join([render_card_html(c) for c in player_hand])
-    player_score = calculate_score(player_hand)
+    can_split = (len(player_hand) == 2 and player_hand[0]['rank'] == player_hand[1]['rank'] and not is_split and bank >= bet * 2)
 
-    if not game_over:
-        action_area = f"""
-        <div class="chip-area">
-            <form action="/game" method="POST" style="display: inline;">
-                <input type="hidden" name="action" value="hit">
-                <button type="submit" class="btn-action">➕ Hit</button>
-            </form>
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <div class="chip">BET</div>
-                <span style="font-size: 22px; font-weight: bold;">${bet}</span>
-            </div>
-            <form action="/game" method="POST" style="display: inline;">
-                <input type="hidden" name="action" value="stand">
-                <button type="submit" class="btn-action btn-stand">✋ Stand</button>
-            </form>
-        </div>
-        """
-    else:
-        btn_text = "💰 Claim $1000 Rescue Fund & Play Again" if session.get('bank', 0) <= 0 else "🔄 Play Again"
-        action_area = f"""
-        <div style="margin: 20px 0;">
-            <h1 style="color: #2ed573; margin-bottom: 10px;">🎰 Blackjack</h1>
-            <h2 style="color: #ffd700; font-size: 24px; margin-bottom: 15px;">{session.get('result_msg', '')}</h2>
-            <form action="/game" method="POST" style="display: inline;">
-                <input type="hidden" name="action" value="bet_phase">
-                <button type="submit" class="btn-action" style="padding: 12px 30px; font-size: 18px; background: #2ed573;">{btn_text}</button>
-            </form>
+    split_btn = f"""
+    <form action="/game" method="POST" style="display:inline;">
+        <input type="hidden" name="action" value="split">
+        <button type="submit" style="padding:10px 20px; font-size:16px; cursor:pointer; background:#f39c12; color:white; border:none; border-radius:5px; margin: 0 5px;">✂️ Split</button>
+    </form>
+    """ if can_split and not game_over else ""
+
+    action_buttons = f"""
+    {split_btn}
+    <form action="/game" method="POST" style="display:inline;">
+        <input type="hidden" name="action" value="hit">
+        <button type="submit" style="padding:10px 20px; font-size:16px; cursor:pointer; background:#2ed573; color:white; border:none; border-radius:5px; margin: 0 5px;">➕ Hit</button>
+    </form>
+    <form action="/game" method="POST" style="display:inline;">
+        <input type="hidden" name="action" value="stand">
+        <button type="submit" style="padding:10px 20px; font-size:16px; cursor:pointer; background:#e74c3c; color:white; border:none; border-radius:5px; margin: 0 5px;">✋ Stand</button>
+    </form>
+    """ if not game_over else f"""
+    <h2 style="color: #f1c40f;">{session.get('result_msg')}</h2>
+    <form action="/game" method="POST">
+        <input type="hidden" name="action" value="bet_phase">
+        <button type="submit" style="padding:10px 20px; font-size:16px; cursor:pointer; background:#d4af37; border:none; border-radius:5px; font-weight:bold;">🔄 Play Again</button>
+    </form>
+    """
+
+    dealer_score_display = calculate_score(dealer_hand) if game_over else "?"
+
+    p1_active_border = "border: 2px solid #f1c40f;" if (is_split and active_hand == 1 and not game_over) else "border: 1px solid rgba(255,255,255,0.2);"
+    p2_active_border = "border: 2px solid #f1c40f;" if (is_split and active_hand == 2 and not game_over) else "border: 1px solid rgba(255,255,255,0.2);"
+
+    player_info = f"{session['user']} (${bank})"
+
+    player_hands_display = f"""
+    <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; {p1_active_border} min-width: 180px;">
+        <h3>{('Hand 1 - ' if is_split else '') + player_info} ({calculate_score(player_hand)} pts)</h3>
+        <div>{player_cards}</div>
+    </div>
+    """
+    if is_split:
+        player_hands_display += f"""
+        <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; {p2_active_border} min-width: 180px;">
+            <h3>Hand 2 ({calculate_score(player_hand2)} pts)</h3>
+            <div>{player_cards2}</div>
         </div>
         """
 
@@ -563,55 +460,88 @@ def game():
     <!DOCTYPE html>
     <html>
     <head>
+        <title>Blackjack Table</title>
         <style>
-            body {{ background-color: #116235; font-family: Arial, sans-serif; color: white; margin: 0; padding: 20px; user-select: none; position: relative; }}
-            .table {{ max-width: 900px; margin: 0 auto; text-align: center; position: relative; }}
-            .dealer-area {{ margin-bottom: 30px; }}
-            .players-area {{ display: flex; justify-content: center; align-items: flex-end; gap: 40px; margin-top: 20px; }}
-            .card-container {{ display: flex; justify-content: center; margin: 10px 0; }}
-            .card {{ width: 75px; height: 110px; background: white; color: black; border-radius: 8px; box-shadow: 2px 2px 8px rgba(0,0,0,0.5); margin: 0 -15px; position: relative; padding: 5px; box-sizing: border-box; font-weight: bold; }}
-            .card.red {{ color: #d63031; }}
-            .card.back {{ background: #d63031; border: 3px solid white; background-image: repeating-linear-gradient(45deg, #b22222 0, #b22222 10px, #d63031 10px, #d63031 20px); }}
-            .score-badge {{ display: inline-block; background: rgba(0,0,0,0.4); padding: 6px 14px; border-radius: 20px; font-size: 16px; font-weight: bold; }}
-            .score-badge span {{ color: #2ed573; margin-left: 5px; }}
-            .chip-area {{ margin: 20px 0; display: flex; justify-content: center; align-items: center; gap: 20px; }}
-            .chip {{ width: 55px; height: 55px; background: #2ed573; border: 4px dashed white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; }}
-            .btn-action {{ background: #2ed573; border: none; color: white; padding: 10px 22px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; }}
-            .btn-stand {{ background: #e17055; }}
-            .bank-tag {{ position: fixed; bottom: 10px; left: 10px; background: #1e272e; padding: 8px 16px; border-radius: 5px; font-size: 16px; font-weight: bold; }}
+            body {{ background-color: #116235; font-family: Arial, sans-serif; color: white; text-align: center; padding: 20px; margin: 0; }}
+            .card {{ width: 75px; height: 110px; background: white; color: black; border-radius: 8px; display: inline-block; margin: 5px; padding: 5px; font-weight: bold; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }}
+            .card.red {{ color: red; }}
+            .card.back {{ background: #d63031; }}
+            .players-container {{ display: flex; justify-content: center; align-items: flex-start; gap: 20px; flex-wrap: wrap; margin: 30px auto; max-width: 1200px; }}
         </style>
     </head>
     <body>
+        {LOGO_HTML}
         {quit_btn_html}
-
-        <div class="table">
-            <div class="dealer-area">
-                <div style="display: flex; flex-direction: column; align-items: center;">
-                    <div class="card-container">{dealer_cards_html}</div>
-                    <div class="score-badge">{dealer_score_str} <span style="color: #ff4757;">Dealer</span></div>
-                </div>
-            </div>
-
-            {action_area}
-
-            <div class="players-area">
-                {ai_players_html}
-                <div style="display: flex; flex-direction: column; align-items: center;">
-                    <div class="card-container">{player_cards_html}</div>
-                    <div class="score-badge">{player_score} <span>{session['user']}</span></div>
-                </div>
-            </div>
+        <h1>🃏 Blackjack Table</h1>
+        <div style="background: rgba(0,0,0,0.3); display: inline-block; padding: 15px 30px; border-radius: 15px;">
+            <h3>Dealer ({dealer_score_display} pts)</h3>
+            <div>{dealer_cards}</div>
         </div>
-
-        <div class="bank-tag">
-            Bank: <span style="color: white;">${session['bank']}</span>
+        <div class="players-container">
+            {bots_html}
+            {player_hands_display}
         </div>
+        <br>
+        {action_buttons}
+        {SBA_NOTICE_HTML}
+    </body>
+    </html>
+    """
 
+@app.route('/admin')
+def admin_panel():
+    if 'user' not in session or session.get('role') != 'admin':
+        return f"{LOGO_HTML}<h1>Access Denied</h1><p>Admin rights required.</p><a href='/lobby'>Back to Lobby</a>"
+
+    users_db = load_users()
+    users_list = [
+        {
+            'username': k, 
+            'password': v.get('password', '****'), 
+            'bank': v.get('bank', 0)
+        } for k, v in users_db.items()
+    ]
+    sorted_users = bubble_sort_leaderboard(users_list)
+
+    rows = ""
+    for u in sorted_users:
+        rows += f"""
+        <tr>
+            <td style='padding:10px; border:1px solid #444;'>{u['username']}</td>
+            <td style='padding:10px; border:1px solid #444;'>{u['password']}</td>
+            <td style='padding:10px; border:1px solid #444;'>${u['bank']}</td>
+        </tr>
+        """
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Admin Panel</title>
+        <style>
+            body {{ background-color: #0a1f12; color: white; font-family: sans-serif; text-align: center; padding: 40px; margin: 0; }}
+            table {{ margin: 20px auto; border-collapse: collapse; width: 70%; background: rgba(255,255,255,0.05); border: 1px solid #2ed573; }}
+            th {{ background: #d4af37; color: black; padding: 12px; font-size: 16px; }}
+        </style>
+    </head>
+    <body>
+        {LOGO_HTML}
+        <h1>👑 Admin Control Panel</h1>
+        <h3>User Management & Balance List</h3>
+        <table>
+            <tr>
+                <th>Username</th>
+                <th>Password</th>
+                <th>Bank Balance</th>
+            </tr>
+            {rows}
+        </table>
+        <br>
+        <a href="/lobby" style="color:#d4af37; text-decoration:none; font-weight:bold;">⬅ Back to Lobby</a>
         {SBA_NOTICE_HTML}
     </body>
     </html>
     """
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(debug=True)

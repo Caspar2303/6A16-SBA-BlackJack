@@ -1,46 +1,86 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>遊戲大廳 - 選擇對手</title>
+    <title>Blackjack - Lobby</title>
     <style>
-        body { background-color: #0a1f12; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .lobby-card { background: rgba(255, 255, 255, 0.1); padding: 40px; border-radius: 20px; text-align: center; border: 1px solid #d4af37; width: 400px; }
-        h2 { color: #d4af37; }
-        .option-group { margin: 30px 0; }
-        select { padding: 10px; width: 80%; border-radius: 5px; font-size: 16px; background: #222; color: white; border: 1px solid #444; }
-        .btn-start { background: #d4af37; color: black; border: none; padding: 15px 30px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 18px; }
-        .btn-start:hover { background: #f1c40f; }
+        body { background-color: #0a1f12; color: white; font-family: sans-serif; text-align: center; padding-top: 60px; margin: 0; }
+        .card-panel { max-width: 450px; margin: auto; background: rgba(255, 255, 255, 0.05); padding: 30px; border-radius: 12px; border: 1px solid #2ed573; }
+        select { padding: 8px; font-size: 16px; border-radius: 6px; margin: 10px 0; }
+        .btn-start { background: #2ed573; color: white; border: none; padding: 12px 25px; font-size: 18px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-start:hover { background: #26af5f; }
+        .nav-links { margin-top: 25px; }
+        .nav-links a, .nav-links button { color: #d4af37; text-decoration: none; margin: 0 8px; font-weight: bold; background: none; border: none; font-size: 16px; cursor: pointer; }
+        
+        /* Modal for Rules */
+        .modal { display: none; position: fixed; z-index: 10; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); }
+        .modal-content { background-color: #116235; margin: 10% auto; padding: 25px; border: 2px solid #d4af37; width: 80%; max-width: 500px; border-radius: 12px; text-align: left; }
+        .close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close-btn:hover { color: white; }
     </style>
 </head>
 <body>
-    <!-- 左上角固定 Logo -->
-    <img src="{{ url_for('static', filename='images/wesley_logo.png') }}" 
-         style="position: absolute; top: 20px; left: 20px; width: 100px; height: auto;">
-     
-    <div class="lobby-card">
-        <!-- 卡片內部 Logo (修正檔名) -->
-        <img src="{{ url_for('static', filename='images/wesley_logo.png') }}" style="width: 100px; height: auto;">
-        
-        <h2>🃏 準備開局</h2>
-        <p>請選擇電腦隊友 (Bots) 數量：</p>
-        
-        <form action="/start_game" method="POST">
-            <div class="option-group">
-                <select name="ai_count">
-                    <option value="1">1 Bot</option>
-                    <option value="2">2 Bots</option>
-                    <option value="3">3 Bots</option>
-                </select>
-            </div>
-            <button type="submit" class="btn-start">開始遊戲</button>
+    <img src="/static/images/wesley_logo.png" style="position: absolute; top: 20px; left: 20px; width: 100px; height: auto;" alt="Logo">
+    <div class="card-panel">
+        <h1>🏠 Game Lobby</h1>
+        <p style="font-size: 20px;">Welcome, <strong>{{ current_user }}</strong>!</p>
+        <p style="font-size: 18px; color: #2ed573;">Bank Balance: <strong>${{ bank }}</strong></p>
+
+        <form action="/start_game" method="POST" style="margin-top: 20px;">
+            <!-- 已刪除 AI 字眼 -->
+            <label for="ai_count" style="font-size: 16px;">Select Number of Bots:</label><br>
+            <select name="ai_count" id="ai_count">
+                <option value="1">1 Bot</option>
+                <option value="2">2 Bots</option>
+                <option value="3">3 Bots</option>
+            </select><br><br>
+            <button type="submit" class="btn-start">🎮 Play Game</button>
         </form>
 
-        <div style="margin-top: 25px; border-top: 1px solid rgba(212, 175, 55, 0.3); padding-top: 15px;">
-            <a href="/logout" style="color: #888; text-decoration: none; font-size: 14px; display: inline-block;">
-                🚪 登出帳號並返回首頁
-            </a>
+        <div class="nav-links">
+            <!-- 新增 Rules 按鈕 -->
+            <button onclick="openRules()">📜 Rules</button> |
+            {% if role == 'admin' %}
+                <a href="/admin">👑 Admin Panel</a> |
+            {% endif %}
+            <a href="/logout" style="color: #ff4757;">🚪 Logout</a>
         </div>
     </div>
+
+    <!-- Rules 彈窗 -->
+    <div id="rulesModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeRules()">&times;</span>
+            <h2 style="color: #d4af37; text-align: center;">📜 Game Rules</h2>
+            <ul style="line-height: 1.6; font-size: 15px;">
+                <li><strong>Goal:</strong> Get a card total closer to 21 than the dealer without going over 21.</li>
+                <li><strong>Card Values:</strong>
+                    <ul>
+                        <li>2-10: Face value</li>
+                        <li>J, Q, K: 10 points</li>
+                        <li>Ace: 1 or 11 points</li>
+                    </ul>
+                </li>
+                <li><strong>Actions:</strong>
+                    <ul>
+                        <li><strong>Hit:</strong> Take another card.</li>
+                        <li><strong>Stand:</strong> Keep current hand and end turn.</li>
+                        <li><strong>Split:</strong> If initial two cards match in rank, split them into two separate hands.</li>
+                    </ul>
+                </li>
+                <li><strong>Dealer Rule:</strong> Dealer must hit until cards total 17 or higher.</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function openRules() { document.getElementById('rulesModal').style.display = 'block'; }
+        function closeRules() { document.getElementById('rulesModal').style.display = 'none'; }
+    </script>
+
+    <footer style="margin-top: 50px; padding: 20px 0; border-top: 1px solid #333; text-align: center; color: #888; font-size: 14px;">
+        <p style="margin: 5px 0;">Minors are strictly prohibited from participating in gambling activities.</p>
+        <p style="margin: 5px 0; color: #aaa; font-weight: bold;">*Just For School SBA - No Real Money Gambling Included*</p>
+    </footer>
 </body>
 </html>

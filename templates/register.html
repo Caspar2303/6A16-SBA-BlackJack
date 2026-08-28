@@ -4,84 +4,32 @@
     <meta charset="UTF-8">
     <title>Blackjack - Register</title>
     <style>
-        body {
-            background-color: #0a1f12;
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            position: relative;
-        }
-        .card {
-            background: #ffffff;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-            width: 320px;
-            text-align: center;
-            border: 2px solid #2ed573;
-        }
-        h2 {
-            color: #1b4332;
-            margin-bottom: 25px;
-        }
-        .form-group {
-            margin-bottom: 20px;
-            text-align: left;
-        }
-        label {
-            display: block;
-            margin-bottom: 6px;
-            color: #333;
-            font-size: 14px;
-            font-weight: bold;
-        }
-        input[type="text"], input[type="password"] {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            box-sizing: border-box;
-        }
-        .btn-submit {
-            width: 100%;
-            background-color: #2ed573;
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 6px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-bottom: 12px;
-        }
-        .btn-back {
-            color: #888;
-            text-decoration: none;
-            font-size: 14px;
-        }
+        body { background-color: #0a1f12; color: white; font-family: sans-serif; text-align: center; padding-top: 80px; margin: 0; }
+        .box { max-width: 350px; margin: auto; background: rgba(255, 255, 255, 0.05); padding: 30px; border-radius: 12px; border: 1px solid #d4af37; }
+        input { width: 90%; padding: 10px; margin: 10px 0; border-radius: 6px; border: none; font-size: 16px; }
+        .btn { width: 95%; background: #d4af37; color: black; border: none; padding: 12px; font-size: 18px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn:hover { background: #b8952d; }
+        a { color: #d4af37; text-decoration: none; }
+        .error { color: #ff4757; font-weight: bold; }
     </style>
 </head>
 <body>
-    <img src="/static/images/wesley_logo.png" style="position: absolute; top: 20px; left: 20px; width: 60px; height: auto;">
-
-    <div class="card">
-        <h2>📝 Account Registration</h2>
+    <img src="/static/images/wesley_logo.png" style="position: absolute; top: 20px; left: 20px; width: 100px; height: auto;" alt="Logo">
+    <div class="box">
+        <h1>📝 Register</h1>
+        {% if error %}
+            <p class="error">{{ error }}</p>
+        {% endif %}
         <form action="/do_register" method="POST">
-            <div class="form-group">
-                <label>Set Username</label>
-                <input type="text" name="username" placeholder="Choose a username" required>
-            </div>
-            <div class="form-group">
-                <label>Set Password</label>
-                <input type="password" name="password" placeholder="Choose a password" required>
-            </div>
-            <button type="submit" class="btn-submit">Confirm Registration</button>
-            <br>
-            <a href="/" class="btn-back">Back to Login</a>
+            <input type="text" name="username" placeholder="New Username" required><br>
+            <input type="password" name="password" placeholder="New Password" required><br>
+            <button type="submit" class="btn">Register</button>
         </form>
+        <p style="margin-top: 20px;">Already have an account? <a href="/login_page">Login here</a></p>
     </div>
+    <footer style="margin-top: 50px; padding: 20px 0; border-top: 1px solid #333; text-align: center; color: #888; font-size: 14px;">
+        <p style="margin: 5px 0;">Minors are strictly prohibited from participating in gambling activities.</p>
+        <p style="margin: 5px 0; color: #aaa; font-weight: bold;">*Just For School SBA - No Real Money Gambling Included*</p>
+    </footer>
 </body>
 </html>
