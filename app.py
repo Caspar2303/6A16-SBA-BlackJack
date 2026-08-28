@@ -6,7 +6,6 @@ from flask import Flask, render_template, request, redirect, url_for, session
 app = Flask(__name__)
 app.secret_key = 'black_jack_secret_key_wesley'
 
-# 頁尾免責聲明與 Logo 標籤
 SBA_NOTICE_HTML = """
 <footer style="margin-top: 50px; padding: 20px 0; border-top: 1px solid #333; text-align: center; color: #888; font-size: 14px;">
     <p style="margin: 5px 0;">Minors are strictly prohibited from participating in gambling activities.</p>
@@ -17,7 +16,6 @@ SBA_NOTICE_HTML = """
 LOGO_HTML = '<img src="/static/images/wesley_logo.png" style="position: absolute; top: 20px; left: 20px; width: 100px; height: auto;" alt="Logo">'
 DB_FILE = 'users.json'
 
-# --- [資料庫操作] ---
 def load_users():
     if not os.path.exists(DB_FILE):
         default_data = {"admin": {"password": "1234", "role": "admin", "bank": 1000}}
@@ -61,7 +59,6 @@ def validate_bet_amount(bet_input, player_bank):
         return False, f"Bet must be between $1 and ${player_bank}."
     return True, bet_val
 
-# --- [撲克牌遊戲邏輯] ---
 def create_deck():
     suits = ['♠', '♥', '♦', '♣']
     ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
@@ -102,8 +99,6 @@ def calculate_score(hand):
         score -= 10
         aces -= 1
     return score
-
-# --- [路由區域] ---
 
 @app.route('/')
 @app.route('/login_page')
@@ -172,7 +167,7 @@ def start_game():
     </head>
     <body>
         {LOGO_HTML}
-        <h1>♠️♦️Ready to Start♥️♣️</h1>
+        <h1>🃏 Ready to Start</h1>
         <p style="font-size: 20px;">Playing with {ai_count} Bot(s) at the table.</p>
         
         <form action="/game" method="POST">
@@ -214,9 +209,9 @@ def game():
             refilled_modal_html = """
             <div id="refillModal" style="position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center;">
                 <div style="background: #0a1f12; border: 2px solid #d4af37; padding: 30px; border-radius: 15px; text-align: center; max-width: 400px; color: white; box-shadow: 0 5px 15px rgba(0,0,0,0.5);">
-                    <h2 style="color: #d4af37; margin-top: 0;">💰 System Notice</h2>
-                    <p style="font-size: 16px; line-height: 1.5;">Your bank becomes 0, we auto-reload your bank to 1000!</p>
-                    <button onclick="document.getElementById('refillModal').style.display='none'" style="background: #2ed573; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 15px;">OK!</button>
+                    <h2 style="color: #d4af37; margin-top: 0;">💰 系統提示</h2>
+                    <p style="font-size: 16px; line-height: 1.5;">你已經冇曬錢，我哋而家幫你入返一千蚊落去！</p>
+                    <button onclick="document.getElementById('refillModal').style.display='none'" style="background: #2ed573; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 15px;">確定</button>
                 </div>
             </div>
             """
@@ -250,6 +245,9 @@ def game():
                 function clearBet() {{
                     document.getElementById('bet_input').value = 0;
                 }}
+                function allIn() {{
+                    document.getElementById('bet_input').value = {session['bank']};
+                }}
             </script>
         </head>
         <body>
@@ -269,10 +267,11 @@ def game():
                         <button type="button" class="chip-btn" onclick="addBet(20)">+20</button>
                         <button type="button" class="chip-btn" onclick="addBet(50)">+50</button>
                         <button type="button" class="chip-btn" onclick="addBet(100)">+100</button>
+                        <button type="button" class="chip-btn" style="background:#e67e22; color:white;" onclick="allIn()">🔥 All In</button>
                         <button type="button" class="chip-btn" style="background:#ff4757; color:white;" onclick="clearBet()">Clear</button>
                     </div>
 
-                    <button type="submit" class="btn-deal">Deal</button>
+                    <button type="submit" class="btn-deal">🃏 Deal</button>
                 </form>
             </div>
             {SBA_NOTICE_HTML}
@@ -472,7 +471,7 @@ def render_game_screen(ai_count, quit_btn_html):
     <body>
         {LOGO_HTML}
         {quit_btn_html}
-        <h1>♠️♦️Blackjack Table♥️♣️</h1>
+        <h1>🃏 Blackjack Table</h1>
         <div style="background: rgba(0,0,0,0.3); display: inline-block; padding: 15px 30px; border-radius: 15px;">
             <h3>Dealer ({dealer_score_display} pts)</h3>
             <div>{dealer_cards}</div>
