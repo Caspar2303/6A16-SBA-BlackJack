@@ -9,7 +9,7 @@ app.secret_key = 'black_jack_secret_key_wesley'
 SBA_NOTICE_HTML = """
 <footer style="margin-top: 50px; padding: 20px 0; border-top: 1px solid #333; text-align: center; color: #888; font-size: 14px;">
     <p style="margin: 5px 0;">Minors are strictly prohibited from participating in gambling activities.</p>
-    <p style="margin: 5px 0; color: #aaa; font-weight: bold;">*Just For School SBA - No Real Money Gambling Included*</p>
+    <p style="margin: 5px 0; color: #aaa; font-weight: bold;">*Just For School SBA - No Real Money Gambling Included*<br>Hong Kong Gambling Addiction Hotline: 183 4633</p>
 </footer>
 """
 
@@ -279,7 +279,7 @@ def game():
         </html>
         """
 
-    if action == 'start_round':
+    elif action == 'start_round':
         bet_raw = request.form.get('bet')
         is_valid, bet_or_msg = validate_bet_amount(bet_raw, session.get('bank', 1000))
         if not is_valid:
@@ -349,6 +349,7 @@ def process_game_settlement():
     total_change = 0
     msg = ""
 
+    # Hand 1 Settlement
     if p1_score > 21:
         total_change -= bet
         msg += "Hand 1: 💥Bust | "
@@ -361,6 +362,7 @@ def process_game_settlement():
     else:
         msg += "Hand 1: 🤝Push | "
 
+    # Hand 2 Settlement (if split occurred)
     if is_split:
         if p2_score > 21:
             total_change -= bet
