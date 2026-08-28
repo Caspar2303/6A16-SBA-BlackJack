@@ -4,11 +4,10 @@ import random
 from flask import Flask, render_template, request, redirect, url_for, session
 
 app = Flask(__name__)
-# 設定 Session 加密金鑰
 app.secret_key = 'black_jack_secret_key_wesley'
 
 # ---------------------------------------------------------
-# SBA 學術免責聲明組件（顯示於每個頁面底部）
+# SBA 免責聲明組件
 # ---------------------------------------------------------
 SBA_NOTICE_HTML = """
 <footer style="margin-top: 50px; padding: 20px 0; border-top: 1px solid #333; text-align: center; color: #888; font-size: 14px;">
@@ -18,12 +17,11 @@ SBA_NOTICE_HTML = """
 """
 
 # ---------------------------------------------------------
-# JSON 資料庫持久化儲存邏輯 (Data Persistence)
+# JSON 資料庫持久化儲存邏輯
 # ---------------------------------------------------------
 DB_FILE = 'users.json'
 
 def load_users():
-    """從 JSON 檔案讀取所有使用者帳號與資料，若檔案不存在則自動建立預設 Admin"""
     if not os.path.exists(DB_FILE):
         default_data = {
             "admin": {"password": "1234", "role": "admin", "bank": 1000}
@@ -35,16 +33,76 @@ def load_users():
         return json.load(f)
 
 def save_users(users_db):
-    """將最新的使用者資料寫回 users.json 檔案進行存檔"""
     with open(DB_FILE, 'w', encoding='utf-8') as f:
         json.dump(users_db, f, ensure_ascii=False, indent=4)
 
-# ---------------------------------------------------------
-# 撲克牌洗牌與 21 點點數計算演算法
-# ---------------------------------------------------------
+# =========================================================
+# ICT DSE Concept 1: Linear Search Algorithm (線性搜尋)
+# =========================================================
+def linear_search_user(target_username, users_db):
+    """
+    ICT Concept: Linear Search
+    Purpose: Iterates through the list of users to check if a username exists (case-insensitive).
+    """
+    user_list = list(users_db.keys())
+    i = 0
+    found = False
+    
+    while i < len(user_list) and not found:
+        if user_list[i].lower() == target_username.lower():
+            found = True
+        i += 1
+        
+    return found
 
+# =========================================================
+# ICT DSE Concept 2: Bubble Sort Algorithm (氣泡排序法)
+# =========================================================
+def bubble_sort_leaderboard(users_data_list):
+    """
+    ICT Concept: Bubble Sort
+    Purpose: Sorts user records in descending order based on their bank balance for the Leaderboard.
+    """
+    n = len(users_data_list)
+    # Outer loop for passes
+    for i in range(n - 1):
+        # Inner loop for adjacent comparisons
+        for j in range(0, n - i - 1):
+            if users_data_list[j]['bank'] < users_data_list[j + 1]['bank']:
+                # Swap elements if current is smaller than next (Descending order)
+                temp = users_data_list[j]
+                users_data_list[j] = users_data_list[j + 1]
+                users_data_list[j + 1] = temp
+                
+    return users_data_list
+
+# =========================================================
+# ICT DSE Concept 3: Data Validation (資料驗證)
+# =========================================================
+def validate_bet_amount(bet_input, player_bank):
+    """
+    ICT Concept: Data Validation (Presence, Type, and Range Checks)
+    """
+    # 1. Presence Check
+    if bet_input is None or str(bet_input).strip() == "":
+        return False, "Bet amount is required."
+    
+    # 2. Type Check
+    try:
+        bet_val = int(bet_input)
+    except ValueError:
+        return False, "Bet amount must be an integer."
+        
+    # 3. Range Check
+    if bet_val < 1 or bet_val > player_bank:
+        return False, f"Bet must be between $1 and ${player_bank}."
+        
+    return True, bet_val
+
+# ---------------------------------------------------------
+# 撲克牌洗牌與點數計算演算法
+# ---------------------------------------------------------
 def create_deck():
-    """建立一副全新的 52 張撲克牌並完成隨機洗牌"""
     suits = ['♠', '♥', '♦', '♣']
     ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
     deck = []
@@ -56,7 +114,6 @@ def create_deck():
     return deck
 
 def render_card_html(card, is_back=False):
-    """將撲克牌資料轉換為前端 HTML/CSS 視覺卡片"""
     if is_back:
         return '<div class="card back"></div>'
     red_class = ' red' if card['color'] == 'red' else ''
@@ -68,7 +125,6 @@ def render_card_html(card, is_back=False):
     """
 
 def calculate_score(hand):
-    """計算手牌點數（包含 Ace 牌自動在 11 分與 1 分之間轉換的邏輯）"""
     score = 0
     aces = 0
     for card in hand:
@@ -86,25 +142,20 @@ def calculate_score(hand):
     return score
 
 # ---------------------------------------------------------
-# 網頁路由邏輯 (Flask Web Routes)
+# 網頁路由邏輯
 # ---------------------------------------------------------
-
-# 首頁路由直接導向登入頁面
 @app.route('/')
 def home():
     return render_template('login.html')
 
-# 登入頁面路由
 @app.route('/login_page')
 def index():
     return render_template('login.html')
 
-# 註冊頁面
 @app.route('/register')
 def register():
     return render_template('register.html')
 
-# 處理使用者註冊請求（已修復重複帳號漏洞）
 @app.route('/do_register', methods=['POST'])
 def do_register():
     new_user = request.form.get('username', '').strip()
@@ -121,9 +172,8 @@ def do_register():
 
     users_db = load_users()
     
-    # 不區分大小寫檢查，防止出現重複帳號（例如 "user" 與 "User "）
-    existing_users_lower = [u.lower() for u in users_db.keys()]
-    if new_user.lower() in existing_users_lower:
+    # 應用 ICT Linear Search 演算法檢查帳號重複
+    if linear_search_user(new_user, users_db):
         return f"""
         <body style="background-color: #0a1f12; color: white; text-align: center; padding-top: 100px; font-family: sans-serif;">
             <h1>Registration Failed</h1><p>Username <strong>{new_user}</strong> is already taken!</p>
@@ -149,7 +199,6 @@ def do_register():
     </body>
     """
 
-# 處理登入驗證邏輯
 @app.route('/login', methods=['POST'])
 def login():
     user = request.form.get('username', '').strip()
@@ -172,7 +221,6 @@ def login():
         </body>
         """
 
-# 遊戲主大廳
 @app.route('/lobby')
 def lobby():
     if 'user' not in session:
@@ -229,7 +277,6 @@ def lobby():
     </html>
     """
 
-# 超級管理員專屬後台
 @app.route('/admin_panel')
 def admin_panel():
     if session.get('role') != 'admin':
@@ -242,12 +289,25 @@ def admin_panel():
         """
 
     users_db = load_users()
-    rows_html = ""
+    
+    # 準備資料並調用 Bubble Sort 進行 Leaderboard 排序
+    raw_user_list = []
     for username, info in users_db.items():
+        raw_user_list.append({
+            'username': username,
+            'password': info['password'],
+            'role': info['role'],
+            'bank': info['bank']
+        })
+        
+    sorted_user_list = bubble_sort_leaderboard(raw_user_list)
+
+    rows_html = ""
+    for info in sorted_user_list:
         role_badge = "👑 Admin" if info['role'] == 'admin' else '👤 Player'
         rows_html += f"""
         <tr>
-            <td style="padding: 12px; border: 1px solid #444;">{username}</td>
+            <td style="padding: 12px; border: 1px solid #444;">{info['username']}</td>
             <td style="padding: 12px; border: 1px solid #444;">{info['password']}</td>
             <td style="padding: 12px; border: 1px solid #444;">{role_badge}</td>
             <td style="padding: 12px; border: 1px solid #444; color: #2ed573; font-weight: bold;">${info['bank']}</td>
@@ -266,7 +326,7 @@ def admin_panel():
     </head>
     <body>
         <h1 style="color: #d4af37;">👑 Admin User Management Panel</h1>
-        <p>List of all registered accounts and user details:</p>
+        <p>Sorted by Balance using <strong>Bubble Sort Algorithm</strong>:</p>
 
         <table>
             <thead>
@@ -290,7 +350,6 @@ def admin_panel():
     </html>
     """
 
-# 對局準備頁面
 @app.route('/start_game', methods=['POST'])
 def start_game():
     ai_count = request.form.get('ai_count', 1)
@@ -309,13 +368,11 @@ def start_game():
     </body>
     """
 
-# 登出邏輯
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('home'))
 
-# 21 點核心遊戲邏輯（已修復 Quit Table 點擊失效問題）
 @app.route('/game', methods=['GET', 'POST'])
 def game():
     if 'user' not in session:
@@ -325,7 +382,6 @@ def game():
     session['ai_count'] = ai_count
     action = request.form.get('action', 'bet_phase')
 
-    # 加入 z-index: 9999 確保 Quit 按鈕永遠位於最上層
     quit_btn_html = """
     <a href="/lobby" style="position: absolute; top: 20px; right: 20px; background: rgba(255, 71, 87, 0.2); color: #ff4757; border: 1px solid #ff4757; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px; z-index: 9999;">
         🚪 Quit Table
@@ -363,7 +419,7 @@ def game():
                     <input type="hidden" name="action" value="start_round">
                     <div style="margin: 20px 0;">
                         <label style="font-size: 18px;">Enter Bet Amount ($):</label><br>
-                        <input type="number" name="bet" value="100" min="1" max="{session['bank']}" class="bet-input" required oninvalid="this.setCustomValidity(this.validity.rangeUnderflow ? 'Value must be greater than or equal to 1.' : 'Value must be less than or equal to ' + this.max + '.')" oninput="this.setCustomValidity('')">
+                        <input type="number" name="bet" value="100" min="1" max="{session['bank']}" class="bet-input" required>
                     </div>
                     <button type="submit" class="btn-deal">🃏 Deal</button>
                 </form>
@@ -379,7 +435,14 @@ def game():
         """
 
     if action == 'start_round':
-        bet = int(request.form.get('bet', 100))
+        bet_raw = request.form.get('bet')
+        # 呼求 ICT Data Validation 函數驗證輸入
+        is_valid, bet_or_msg = validate_bet_amount(bet_raw, session.get('bank', 1000))
+        
+        if not is_valid:
+            return f"<script>alert('{bet_or_msg}'); window.history.back();</script>"
+            
+        bet = bet_or_msg
         session['bet'] = bet
         session['deck'] = create_deck()
         session['dealer_hand'] = [session['deck'].pop(), session['deck'].pop()]
@@ -487,6 +550,7 @@ def game():
         btn_text = "💰 Claim $1000 Rescue Fund & Play Again" if session.get('bank', 0) <= 0 else "🔄 Play Again"
         action_area = f"""
         <div style="margin: 20px 0;">
+            <h1 style="color: #2ed573; margin-bottom: 10px;">🎰 Blackjack</h1>
             <h2 style="color: #ffd700; font-size: 24px; margin-bottom: 15px;">{session.get('result_msg', '')}</h2>
             <form action="/game" method="POST" style="display: inline;">
                 <input type="hidden" name="action" value="bet_phase">
