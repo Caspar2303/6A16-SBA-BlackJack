@@ -11,6 +11,11 @@
         .btn:hover { background: #26af5f; }
         a { color: #d4af37; text-decoration: none; }
         .error { color: #ff4757; font-weight: bold; }
+        /* Modal styles */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); justify-content: center; align-items: center; }
+        .modal-content { background: #0a1f12; border: 2px solid #d4af37; padding: 30px; border-radius: 15px; text-align: center; max-width: 350px; color: white; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        .modal-btn { background: #2ed573; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        .modal-btn:hover { background: #26af5f; }
     </style>
 </head>
 <body>
@@ -27,13 +32,23 @@
         </form>
         
         <div style="margin-top: 12px;">
-            <button type="button" onclick="alert('please contact admin')" style="background: none; border: none; color: #d4af37; cursor: pointer; font-size: 14px; text-decoration: underline;">
+            <button type="button" onclick="document.getElementById('forgotModal').style.display='flex'" style="background: none; border: none; color: #d4af37; cursor: pointer; font-size: 14px; text-decoration: underline;">
                 Forget Password
             </button>
         </div>
 
         <p style="margin-top: 15px;">Don't have an account? <a href="/register">Register here</a></p>
     </div>
+
+    <!-- Forget Password Modal -->
+    <div id="forgotModal" class="modal">
+        <div class="modal-content">
+            <h2 style="color: #d4af37; margin-top: 0;">🔒 Password Recovery</h2>
+            <p style="font-size: 16px; line-height: 1.5;">Please contact the administrator to reset your password.</p>
+            <button type="button" class="modal-btn" onclick="document.getElementById('forgotModal').style.display='none'">確定</button>
+        </div>
+    </div>
+
     <footer style="margin-top: 50px; padding: 20px 0; border-top: 1px solid #333; text-align: center; color: #888; font-size: 14px;">
         <p style="margin: 5px 0;">Minors are strictly prohibited from participating in gambling activities.</p>
         <p style="margin: 5px 0; color: #aaa; font-weight: bold;">*Just For School SBA - No Real Money Gambling Included*</p>
