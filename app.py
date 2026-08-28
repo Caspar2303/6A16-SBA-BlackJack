@@ -352,28 +352,28 @@ def process_game_settlement():
 
     if p1_score > 21:
         total_change -= bet
-        msg += "Hand 2: 💥Bust | "
+        msg += "Hand 1: 💥Bust | "
     elif d_score > 21 or p1_score > d_score:
         total_change += bet
-        msg += "Hand 2: 🎉Win | "
+        msg += "Hand 1: 🎉Win | "
     elif p1_score < d_score:
         total_change -= bet
-        msg += "Hand 2: ❌Loss | "
+        msg += "Hand 1: ❌Loss | "
     else:
-        msg += "Hand 2: 🤝Push | "
+        msg += "Hand 1: 🤝Push | "
 
     if is_split:
         if p2_score > 21:
             total_change -= bet
-            msg += "Hand 1: 💥Bust"
+            msg += "Hand 2: 💥Bust"
         elif d_score > 21 or p2_score > d_score:
             total_change += bet
-            msg += "Hand 1: 🎉Win"
+            msg += "Hand 2: 🎉Win"
         elif p2_score < d_score:
             total_change -= bet
-            msg += "Hand 1: ❌Loss"
+            msg += "Hand 2: ❌Loss"
         else:
-            msg += "Hand 1: 🤝Push"
+            msg += "Hand 2: 🤝Push"
 
     session['bank'] += total_change
     session['result_msg'] = msg
@@ -444,14 +444,14 @@ def render_game_screen(ai_count, quit_btn_html):
 
     player_hands_display = f"""
     <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; {p1_active_border} min-width: 180px;">
-        <h3>{('Hand 2 - ' if is_split else '') + player_info} ({calculate_score(player_hand)} pts)</h3>
+        <h3>{('Hand 1 - ' if is_split else '') + player_info} ({calculate_score(player_hand)} pts)</h3>
         <div>{player_cards}</div>
     </div>
     """
     if is_split:
         player_hands_display += f"""
         <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; {p2_active_border} min-width: 180px;">
-            <h3>Hand 1 ({calculate_score(player_hand2)} pts)</h3>
+            <h3>Hand 2 ({calculate_score(player_hand2)} pts)</h3>
             <div>{player_cards2}</div>
         </div>
         """
