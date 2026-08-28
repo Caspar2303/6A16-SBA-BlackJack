@@ -209,8 +209,8 @@ def game():
             refilled_modal_html = """
             <div id="refillModal" style="position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center;">
                 <div style="background: #0a1f12; border: 2px solid #d4af37; padding: 30px; border-radius: 15px; text-align: center; max-width: 400px; color: white; box-shadow: 0 5px 15px rgba(0,0,0,0.5);">
-                    <h2 style="color: #d4af37; margin-top: 0;">💰 系統提示</h2>
-                    <p style="font-size: 16px; line-height: 1.5;">你已經冇曬錢，我哋而家幫你入返一千蚊落去！</p>
+                    <h2 style="color: #d4af37; margin-top: 0;">💰 System Notice</h2>
+                    <p style="font-size: 16px; line-height: 1.5;">Your bank becomes 0, so we auto-reload to 1000!</p>
                     <button onclick="document.getElementById('refillModal').style.display='none'" style="background: #2ed573; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 15px;">確定</button>
                 </div>
             </div>
