@@ -27,7 +27,6 @@
         <p style="font-size: 18px; color: #2ed573;">Bank Balance: <strong>${{ bank }}</strong></p>
 
         <form action="/start_game" method="POST" style="margin-top: 20px;">
-            <!-- 已刪除 AI 字眼 -->
             <label for="ai_count" style="font-size: 16px;">Select Number of Bots:</label><br>
             <select name="ai_count" id="ai_count">
                 <option value="1">1 Bot</option>
@@ -38,7 +37,6 @@
         </form>
 
         <div class="nav-links">
-            <!-- 新增 Rules 按鈕 -->
             <button onclick="openRules()">📜 Rules</button> |
             {% if role == 'admin' %}
                 <a href="/admin">👑 Admin Panel</a> |
@@ -80,7 +78,7 @@
 
     <footer style="margin-top: 50px; padding: 20px 0; border-top: 1px solid #333; text-align: center; color: #888; font-size: 14px;">
         <p style="margin: 5px 0;">Minors are strictly prohibited from participating in gambling activities.</p>
-        <p style="margin: 5px 0; color: #aaa; font-weight: bold;">*Just For School SBA - No Real Money Gambling Included*</p>
+        <p style="margin: 5px 0; color: #aaa; font-weight: bold;">*Just For School SBA - No Real Money Gambling Included*<br>Hong Kong Gambling Addiction Hotline: 183 4633</p>
     </footer>
 </body>
 </html>
